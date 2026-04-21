@@ -1,7 +1,6 @@
 from typing import Union, List, Dict
 from pathlib import Path
 from videotrans.configure.config import tr,settings,params,app_cfg,logger,ROOT_DIR
-from videotrans.recognition._overall import FasterAll
 
 
 FASTER_WHISPER = 0
@@ -274,4 +273,5 @@ def run(*,
         from videotrans.recognition._camb import CambRecogn
         return CambRecogn(**kwargs).run()
 
+    from videotrans.recognition._overall import FasterAll
     return FasterAll(**kwargs).run()

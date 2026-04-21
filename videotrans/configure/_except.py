@@ -1,16 +1,46 @@
 import re
 
-import aiohttp
 import requests
-from elevenlabs.core import ApiError as ApiError_11
-from openai import AuthenticationError, PermissionDeniedError, NotFoundError, BadRequestError, RateLimitError, \
-    APIConnectionError, APIError, ContentFilterFinishReasonError, InternalServerError, LengthFinishReasonError
 from requests.exceptions import TooManyRedirects, MissingSchema, InvalidSchema, InvalidURL, ProxyError, SSLError, \
     Timeout, ConnectionError as ReqConnectionError, RetryError, HTTPError
-from deepgram.clients.common.v1.errors import DeepgramApiError
 from videotrans.configure.config import tr, params, settings, app_cfg, logger, defaulelang
-import httpx, httpcore
-from tenacity import RetryError as TenRetryError
+
+# Optional heavy dependencies – imported lazily so missing packages only fail
+# when the corresponding provider is actually used.
+try:
+    import aiohttp
+except ImportError:
+    aiohttp = None
+
+try:
+    from elevenlabs.core import ApiError as ApiError_11
+except ImportError:
+    ApiError_11 = Exception
+
+try:
+    from openai import (AuthenticationError, PermissionDeniedError, NotFoundError,
+                        BadRequestError, RateLimitError, APIConnectionError, APIError,
+                        ContentFilterFinishReasonError, InternalServerError,
+                        LengthFinishReasonError)
+except ImportError:
+    AuthenticationError = PermissionDeniedError = NotFoundError = BadRequestError = Exception
+    RateLimitError = APIConnectionError = APIError = Exception
+    ContentFilterFinishReasonError = InternalServerError = LengthFinishReasonError = Exception
+
+try:
+    from deepgram.clients.common.v1.errors import DeepgramApiError
+except ImportError:
+    DeepgramApiError = Exception
+
+try:
+    import httpx, httpcore
+except ImportError:
+    httpx = httpcore = None
+
+try:
+    from tenacity import RetryError as TenRetryError
+except ImportError:
+    TenRetryError = Exception
 
 
 # 内部已整理好错误提示消息的异常，将ex=None,message='{错误消息}'
