@@ -335,7 +335,14 @@ def get_edge_rolelist(role_name=None,locale=None):
         except (OSError,json.JSONDecodeError):
             pass
     if role_name and locale:
-        return voice_list.get(locale.split('-')[0],{}).get(role_name)
+        resolved = voice_list.get(locale.split('-')[0],{}).get(role_name)
+        if resolved:
+            return resolved
+        # role_name may already be a real Edge-TTS voice name (e.g. "en-US-JennyNeural")
+        # rather than a display-name key. Accept it directly if it matches the pattern.
+        if re.match(r'^[a-z]{2,}-[A-Z]{2,}-.+Neural$', str(role_name)):
+            return role_name
+        return None
     return voice_list
 
 
