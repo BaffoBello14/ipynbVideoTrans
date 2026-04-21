@@ -141,8 +141,17 @@ class EdgeTTS(BaseTTS):
         total_tasks = len(self.queue_tts)
         semaphore = asyncio.Semaphore(MAX_CONCURRENT_TASKS)
         for it in self.queue_tts:
-            it['role']=tools.get_edge_rolelist(it['role'],self.language)
-            #print(f'{it["role"]=}')
+            resolved = tools.get_edge_rolelist(it['role'], self.language)
+            # get_edge_rolelist may return None if the voice name is not in the JSON
+            # and does not match the pattern. Fall back to the original value so that
+            # a real voice name (e.g. "en-US-JennyNeural") is never lost.
+            if resolved is None:
+                resolved = it['role']
+            # Last safety net: if still None or not a str, use a sensible default
+            if not isinstance(resolved, str) or not resolved.strip():
+                resolved = f"{self.language[:2]}-{'US' if self.language[:2]=='en' else 'default'}-AriaNeural"
+                logger.warning(f"EdgeTTS: voice role is None/empty, falling back to {resolved}")
+            it['role'] = resolved
 
         worker_tasks = [
             asyncio.create_task(
