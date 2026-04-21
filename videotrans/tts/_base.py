@@ -9,6 +9,15 @@ from pathlib import Path
 from typing import List, Dict, Any, Optional, Union
 
 from tenacity import RetryError
+
+# Jupyter / Colab kernels already run an asyncio event loop.
+# nest_asyncio patches it so that run_until_complete() can be called
+# from inside a running loop (e.g. from a notebook cell).
+try:
+    import nest_asyncio
+    nest_asyncio.apply()
+except ImportError:
+    pass  # outside notebooks nest_asyncio is not needed
 from videotrans.configure._base import BaseCon
 from videotrans.configure._except import StopRetry
 from videotrans.configure.config import tr, settings, params, app_cfg, logger, TEMP_DIR
@@ -120,55 +129,46 @@ class BaseTTS(BaseCon):
         _st = time.time()
         if hasattr(self, '_download'):
             self._download()
-        loop = None
         try:
-            # 检查 self._exec 是不是一个异步函数 (coroutine)
             if inspect.iscoroutinefunction(self._exec):
+                # Check whether there is already a running loop (Jupyter / Colab kernel).
                 try:
-                    loop = asyncio.get_running_loop()
+                    running_loop = asyncio.get_running_loop()
                 except RuntimeError:
+                    running_loop = None
+
+                if running_loop is not None:
+                    # We are inside a running loop (Jupyter/Colab).
+                    # nest_asyncio (applied at import time) allows run_until_complete
+                    # to be called re-entrantly on the same loop.
+                    running_loop.run_until_complete(self._exec())
+                else:
+                    # No running loop: create our own, run, then close it.
                     loop = asyncio.new_event_loop()
                     asyncio.set_event_loop(loop)
-                    loop.run_until_complete(self._exec())
-                else:
-                    loop.run_until_complete(self._exec())
+                    try:
+                        loop.run_until_complete(self._exec())
+                    finally:
+                        try:
+                            tasks = asyncio.all_tasks(loop=loop)
+                            for task in tasks:
+                                task.cancel()
+                            if tasks:
+                                loop.run_until_complete(
+                                    asyncio.gather(*tasks, return_exceptions=True)
+                                )
+                            loop.run_until_complete(loop.shutdown_asyncgens())
+                        except Exception:
+                            pass
+                        finally:
+                            loop.close()
             else:
-                # 可能调用多线程
                 self._exec()
         except RetryError as e:
             raise e.last_attempt.exception()
-        except RuntimeError as e:
-            logger.warning(f'TTS 线程运行时发生错误: {e}')
-            if 'Event loop' in str(e):
-                logger.warning("捕获到 'Event loop is closed' 错误，这通常是关闭时序问题。")
-            else:
-                raise
         except Exception:
             raise
         finally:
-            # 只有当 self._exec 是异步函数时，才需要处理事件循环
-            if inspect.iscoroutinefunction(self._exec) and loop and not loop.is_closed():
-                logger.debug("开始执行事件循环的关闭流程...")
-                try:
-                    # 1: 取消所有剩余的任务
-                    tasks = asyncio.all_tasks(loop=loop)
-                    for task in tasks:
-                        task.cancel()
-
-                    # 2: 聚合所有任务，等待它们完成取消
-                    group = asyncio.gather(*tasks, return_exceptions=True)
-                    loop.run_until_complete(group)
-                    import gc
-                    gc.collect()
-                    loop.run_until_complete(asyncio.sleep(0))
-                    # 3: 关闭异步生成器
-                    loop.run_until_complete(loop.shutdown_asyncgens())
-                except Exception as e:
-                    logger.exception(e, exc_info=True)
-                finally:
-                    # 4: 最终关闭事件循环
-                    logger.debug("事件循环已关闭。")
-                    loop.close()
             logger.debug(f'[字幕配音]渠道{self.tts_type}:共耗时:{int(time.time() - _st)}s')
 
         # 试听或测试时播放
