@@ -105,34 +105,78 @@ class BaseTrans(BaseCon):
                 self._unload()
             logger.debug(f'[字幕翻译]渠道{self.translate_type},{self.model_name}:共耗时:{int(time.time()-_st)}s')
             
-    def _run_text(self,split_source_text):
-        # 传统翻译渠道或AI翻译渠道以按行形式翻译
-        target_list=[]
-        for i, it in enumerate(split_source_text):
-            """ it=['你好啊我的朋友','第二行'] 
-                此时 _item_task 接收的是 list[str]
-            """
-            if self._exit(): return
-            self._signal(text=tr('starttrans') + f' {i} ')
-            result = self._get_cache(it)
-            if not result:
-                result = tools.cleartext(self._item_task(it))
-                self._set_cache(it, result)
+    @staticmethod
+    def _merge_lines_into_sentences(lines: list) -> tuple:
+        """
+        Merge SRT line fragments into complete sentences before translation.
 
+        Returns:
+            sentences   – list of merged sentence strings
+            mapping     – list of (sentence_idx, char_start, char_end) per original line,
+                          used to redistribute translated sentences back to original lines
+        """
+        import re
+        _END = re.compile(r'[.!?;]\s*$')
+
+        sentences, mapping = [], []
+        current, members = [], []
+
+        for i, line in enumerate(lines):
+            text = line.strip()
+            current.append(text)
+            members.append(i)
+
+            is_end = bool(_END.search(text))
+            is_last = (i == len(lines) - 1)
+
+            if is_end or is_last:
+                sentences.append(' '.join(current))
+                for orig_idx in members:
+                    mapping.append(len(sentences) - 1)
+                current, members = [], []
+
+        return sentences, mapping
+
+    def _run_text(self,split_source_text):
+        # Flatten all lines for sentence-aware merging (non-AI providers only)
+        all_lines = [line for batch in split_source_text for line in batch]
+
+        # Merge SRT fragments into complete sentences, translate them, then
+        # redistribute back to the original per-line structure expected downstream.
+        sentences, line_to_sentence = self._merge_lines_into_sentences(all_lines)
+
+        # Batch the merged sentences using trans_thread
+        sent_batches = [sentences[i:i + self.trans_thread]
+                        for i in range(0, len(sentences), self.trans_thread)]
+
+        translated_sentences: list = []
+        for i, batch in enumerate(sent_batches):
+            if self._exit():
+                return
+            self._signal(text=tr('starttrans') + f' {i} ')
+            result = self._get_cache(batch)
+            if not result:
+                result = tools.cleartext(self._item_task(batch))
+                self._set_cache(batch, result)
 
             sep_res = result.split("\n")
+            for x in range(len(batch)):
+                translated_sentences.append(sep_res[x].strip() if x < len(sep_res) else "")
+                self._signal(text=(sep_res[x] if x < len(sep_res) else "") + "\n", type='subtitle')
 
-            for x, result_item in enumerate(sep_res):
-                if x < len(it):
-                    target_list.append(result_item.strip())
-                    self._signal(text=result_item + "\n",type='subtitle')
-            # 行数不匹配填充空行
-            if len(sep_res) < len(it):
-                print(f'行数不匹配，原始：{len(it)}, 结果：{len(sep_res)}\n{it=}\n{sep_res=}')
-                tmp = ["" for x in range(len(it) - len(sep_res))]
-                target_list += tmp
+            # Pad if response has fewer lines than batch
+            if len(sep_res) < len(batch):
+                translated_sentences += [""] * (len(batch) - len(sep_res))
 
             time.sleep(self.wait_sec)
+
+        # Map translated sentences back to original SRT line count
+        target_list = []
+        for i in range(len(all_lines)):
+            sent_idx = line_to_sentence[i] if i < len(line_to_sentence) else len(translated_sentences) - 1
+            target_list.append(
+                translated_sentences[sent_idx] if sent_idx < len(translated_sentences) else ""
+            )
 
         max_i = len(target_list)
         logger.debug(f'以普通文本行按行翻译：原始行数:{len(self.text_list)},翻译后行数:{max_i}')

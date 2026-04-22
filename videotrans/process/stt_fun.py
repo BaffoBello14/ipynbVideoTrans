@@ -31,7 +31,12 @@ def openai_whisper(
     from pathlib import Path
     import torch
     torch.set_num_threads(1)
-    import whisper
+    try:
+        import whisper
+    except ModuleNotFoundError:
+        import subprocess, sys
+        subprocess.check_call([sys.executable, "-m", "pip", "install", "-q", "openai-whisper"])
+        import whisper
     from videotrans.util import tools
 
     import zhconv
