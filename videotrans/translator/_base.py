@@ -111,14 +111,14 @@ class BaseTrans(BaseCon):
         Merge SRT line fragments into complete sentences before translation.
 
         Returns:
-            sentences   – list of merged sentence strings
-            mapping     – list of (sentence_idx, char_start, char_end) per original line,
-                          used to redistribute translated sentences back to original lines
+            sentences      – list of merged sentence strings (one per sentence group)
+            group_first    – dict {original_line_idx: True}  marks the FIRST line of each group
+            line_to_sent   – list mapping each original line index → sentence index
         """
         import re
         _END = re.compile(r'[.!?;]\s*$')
 
-        sentences, mapping = [], []
+        sentences, line_to_sent, group_first = [], [], {}
         current, members = [], []
 
         for i, line in enumerate(lines):
@@ -130,20 +130,23 @@ class BaseTrans(BaseCon):
             is_last = (i == len(lines) - 1)
 
             if is_end or is_last:
+                sent_idx = len(sentences)
                 sentences.append(' '.join(current))
+                group_first[members[0]] = True   # first line gets the translation
                 for orig_idx in members:
-                    mapping.append(len(sentences) - 1)
+                    line_to_sent.append(sent_idx)
                 current, members = [], []
 
-        return sentences, mapping
+        return sentences, group_first, line_to_sent
 
-    def _run_text(self,split_source_text):
+    def _run_text(self, split_source_text):
         # Flatten all lines for sentence-aware merging (non-AI providers only)
         all_lines = [line for batch in split_source_text for line in batch]
 
         # Merge SRT fragments into complete sentences, translate them, then
-        # redistribute back to the original per-line structure expected downstream.
-        sentences, line_to_sentence = self._merge_lines_into_sentences(all_lines)
+        # put the translation on the FIRST line of each group and empty string
+        # on the continuation lines (empty lines are skipped by TTS).
+        sentences, group_first, line_to_sent = self._merge_lines_into_sentences(all_lines)
 
         # Batch the merged sentences using trans_thread
         sent_batches = [sentences[i:i + self.trans_thread]
@@ -164,19 +167,21 @@ class BaseTrans(BaseCon):
                 translated_sentences.append(sep_res[x].strip() if x < len(sep_res) else "")
                 self._signal(text=(sep_res[x] if x < len(sep_res) else "") + "\n", type='subtitle')
 
-            # Pad if response has fewer lines than batch
             if len(sep_res) < len(batch):
                 translated_sentences += [""] * (len(batch) - len(sep_res))
 
             time.sleep(self.wait_sec)
 
-        # Map translated sentences back to original SRT line count
+        # Redistribute: first line of group → translated sentence, rest → ""
         target_list = []
         for i in range(len(all_lines)):
-            sent_idx = line_to_sentence[i] if i < len(line_to_sentence) else len(translated_sentences) - 1
-            target_list.append(
-                translated_sentences[sent_idx] if sent_idx < len(translated_sentences) else ""
-            )
+            if group_first.get(i):
+                sent_idx = line_to_sent[i] if i < len(line_to_sent) else len(translated_sentences) - 1
+                target_list.append(
+                    translated_sentences[sent_idx] if sent_idx < len(translated_sentences) else ""
+                )
+            else:
+                target_list.append("")   # continuation line: TTS will skip it
 
         max_i = len(target_list)
         logger.debug(f'以普通文本行按行翻译：原始行数:{len(self.text_list)},翻译后行数:{max_i}')
