@@ -4,7 +4,10 @@ from pathlib import Path
 from videotrans.configure.config import ROOT_DIR,tr,app_cfg,settings,params,TEMP_DIR,logger,defaulelang
 from videotrans.tts._base import BaseTTS
 from videotrans.util import tools
-import sherpa_onnx
+try:
+    import sherpa_onnx
+except ImportError:
+    sherpa_onnx = None  # install 'sherpa-onnx' to use this provider
 import soundfile as sf
 
 _model_obj={}

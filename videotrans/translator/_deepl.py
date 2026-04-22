@@ -4,7 +4,10 @@ import re
 from dataclasses import dataclass
 from typing import List, Union
 
-import deepl
+try:
+    import deepl
+except ImportError:
+    deepl = None  # install 'deepl' to use this provider
 from tenacity import retry, stop_after_attempt, wait_fixed, retry_if_not_exception_type, before_log, after_log
 
 from videotrans.configure.config import tr,params,settings,app_cfg,logger

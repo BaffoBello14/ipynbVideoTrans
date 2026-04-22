@@ -2,7 +2,10 @@
 from dataclasses import dataclass
 from typing import List, Dict, Union
 
-import dashscope
+try:
+    import dashscope
+except ImportError:
+    dashscope = None  # install 'dashscope' to use this provider
 from videotrans.configure.config import params
 from videotrans.recognition._base import BaseRecogn
 

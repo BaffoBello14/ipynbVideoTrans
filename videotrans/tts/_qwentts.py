@@ -1,7 +1,10 @@
 import logging
 from dataclasses import dataclass
 
-import dashscope
+try:
+    import dashscope
+except ImportError:
+    dashscope = None  # install 'dashscope' to use this provider
 import requests
 from tenacity import retry, stop_after_attempt, wait_fixed, retry_if_not_exception_type, before_log, after_log
 from videotrans.configure.config import tr,params,settings,app_cfg,logger
