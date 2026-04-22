@@ -1,7 +1,10 @@
 import re
 from dataclasses import dataclass
 from typing import List, Union
-import dashscope
+try:
+    import dashscope
+except ImportError:
+    dashscope = None  # install 'dashscope' to use this provider
 from videotrans.configure.config import tr,settings,params,app_cfg,logger
 from videotrans.translator._base import BaseTrans
 from videotrans.util import tools

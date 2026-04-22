@@ -5,10 +5,22 @@ from dataclasses import dataclass
 from typing import List, Union
 
 from tenacity import retry, stop_after_attempt, wait_fixed, retry_if_not_exception_type, before_log, after_log
-from tencentcloud.common import credential
-from tencentcloud.common.profile.client_profile import ClientProfile
-from tencentcloud.common.profile.http_profile import HttpProfile
-from tencentcloud.tmt.v20180321 import tmt_client, models
+try:
+    from tencentcloud.common import credential
+except ImportError:
+    tencentcloud = None  # install 'tencentcloud-sdk-python' to use this provider
+try:
+    from tencentcloud.common.profile.client_profile import ClientProfile
+except ImportError:
+    tencentcloud = None  # install 'tencentcloud-sdk-python' to use this provider
+try:
+    from tencentcloud.common.profile.http_profile import HttpProfile
+except ImportError:
+    tencentcloud = None  # install 'tencentcloud-sdk-python' to use this provider
+try:
+    from tencentcloud.tmt.v20180321 import tmt_client, models
+except ImportError:
+    tencentcloud = None  # install 'tencentcloud-sdk-python' to use this provider
 
 from videotrans.configure.config import tr,params,settings,app_cfg,logger
 from videotrans.configure._except import NO_RETRY_EXCEPT

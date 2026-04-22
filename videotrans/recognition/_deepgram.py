@@ -10,12 +10,18 @@ import json
 
 import httpx
 
-from deepgram import (
-    DeepgramClient,
-    PrerecordedOptions,
-    FileSource,
-)
-from deepgram_captions import DeepgramConverter, srt
+try:
+    from deepgram import (
+        DeepgramClient,
+        PrerecordedOptions,
+        FileSource,
+    )
+except ImportError:
+    DeepgramClient = PrerecordedOptions = FileSource = None  # install 'deepgram-sdk' to use this provider
+try:
+    from deepgram_captions import DeepgramConverter, srt
+except ImportError:
+    DeepgramConverter = srt = None  # install 'deepgram-captions' to use this provider
 from tenacity import retry, stop_after_attempt, wait_fixed, retry_if_not_exception_type, before_log, after_log
 from videotrans.configure._except import NO_RETRY_EXCEPT
 from videotrans.configure.config import tr,params,settings,app_cfg,logger

@@ -5,7 +5,10 @@ from videotrans.configure.config import ROOT_DIR,tr,app_cfg,settings,params,TEMP
 from videotrans.tts._base import BaseTTS
 from videotrans.util import tools
 import wave
-from piper import PiperVoice,SynthesisConfig
+try:
+    from piper import PiperVoice,SynthesisConfig
+except ImportError:
+    piper = None  # install 'piper-tts' to use this provider
 
 @dataclass
 class PiperTTS(BaseTTS):

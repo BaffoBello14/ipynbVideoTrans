@@ -1,10 +1,22 @@
 from dataclasses import dataclass
 from typing import List, Union
 
-from alibabacloud_alimt20181012 import models as alimt_20181012_models
-from alibabacloud_alimt20181012.client import Client as alimt20181012Client
-from alibabacloud_tea_openapi import models as open_api_models
-from alibabacloud_tea_util import models as util_models
+try:
+    from alibabacloud_alimt20181012 import models as alimt_20181012_models
+except ImportError:
+    alibabacloud_alimt20181012 = None  # install 'alibabacloud-alimt20181012' to use this provider
+try:
+    from alibabacloud_alimt20181012.client import Client as alimt20181012Client
+except ImportError:
+    alibabacloud_alimt20181012 = None  # install 'alibabacloud-alimt20181012' to use this provider
+try:
+    from alibabacloud_tea_openapi import models as open_api_models
+except ImportError:
+    alibabacloud_tea_openapi = None  # install 'alibabacloud-tea-openapi' to use this provider
+try:
+    from alibabacloud_tea_util import models as util_models
+except ImportError:
+    alibabacloud_tea_util = None  # install 'alibabacloud-tea-util' to use this provider
 from videotrans.configure.config import tr,params,settings,app_cfg,logger
 from videotrans.translator._base import BaseTrans
 
