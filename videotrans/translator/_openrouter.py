@@ -64,7 +64,7 @@ class OpenRouter(BaseTrans):
         if response.choices[0].message.content:
             result = response.choices[0].message.content.strip()
         else:
-            logger.warning(f'[openrouter]请求失败:{response=}')
+            logger.warning(f'[openrouter] Request failed:{response=}')
             raise RuntimeError(f"[OpenRouter] {response.choices[0].finish_reason}:{response}")
 
         match = re.search(r'<TRANSLATE_TEXT>(.*?)</TRANSLATE_TEXT>', result, re.S)

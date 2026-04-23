@@ -19,7 +19,7 @@ class Doubao2TTS(BaseTTS):
         super().__post_init__()
         self.stop_next_all=False
         #self.dub_nums = 1
-        # 语音合成模型2.0专属角色 
+        # Speech synthesis model 2.0 exclusive role
         self.model2=[
             "zh_female_vv_uranus_bigtts",
             "zh_male_dayi_saturn_bigtts",
@@ -36,7 +36,7 @@ class Doubao2TTS(BaseTTS):
         ]
 
     def _exec(self):
-        # 并发限制为1，防止限流
+        # The concurrency limit is 1 to prevent current limiting
         self._local_mul_thread()
     
 
@@ -45,30 +45,20 @@ class Doubao2TTS(BaseTTS):
         import wave
         import struct
         import math
-        """
-        将原始PCM数据（bytearray）保存为WAV文件。
-
-        Args:
-            audio_data (bytearray): 包含原始PCM音频数据的字节数组。
-            output_filename (str): 要保存的WAV文件的路径和名称。
-            channels (int): 声道数。默认为1（单声道）。
-            sample_rate (int): 采样率（Hz）。默认为44100。
-            sample_width (int): 采样宽度（字节）。默认为2（16-bit）。
-                                 1 表示 8-bit, 2 表示 16-bit, 3 表示 24-bit。
-        """
+        'Save raw PCM data (bytearray) as WAV file.\n\n        Args:\n            audio_data (byte array): byte array containing raw PCM audio data.\n            output_filename (str): The path and name of the WAV file to be saved.\n            channels (int): Number of channels. Default is 1 (mono).\n            sample_rate (int): sampling rate (Hz). The default is 44100.\n            sample_width (int): Sample width (bytes). The default is 2 (16-bit).\n                                 1 represents 8-bit, 2 represents 16-bit, and 3 represents 24-bit.'
         if not output_filename.lower().endswith('.wav'):
             output_filename += '.wav'
 
         try:
             with wave.open(output_filename, 'wb') as wf:
-                wf.setnchannels(channels)        # 设置声道数
-                wf.setsampwidth(sample_width)    # 设置采样宽度 (2 bytes = 16 bits)
-                wf.setframerate(sample_rate)     # 设置采样率
+                wf.setnchannels(channels)        # Set the number of channels
+                wf.setsampwidth(sample_width)    # Set sampling width (2 bytes = 16 bits)
+                wf.setframerate(sample_rate)     # Set sampling rate
 
                 wf.writeframes(audio_data)
 
         except Exception as e:
-            logger.exception(f"保存WAV文件时出错: {e}",exc_info=True)
+            logger.exception(f"Error saving WAV file:{e}",exc_info=True)
 
     
     def _item_task(self, data_item: dict = None,idx:int=-1):
@@ -89,7 +79,7 @@ class Doubao2TTS(BaseTTS):
                 volume = int(float(self.volume.replace('%', '')))
                 volume=min(max(-50,volume),100)
 
-            # 角色为实际名字
+            #The role is the actual name
             role = data_item['role']
             role=tools.get_doubao2_rolelist(role_name=role,langcode=self.language[:2])
             headers = {
@@ -127,17 +117,17 @@ class Doubao2TTS(BaseTTS):
             
             if response.status_code in [404,402,401,400]:
                 self.stop_next_all=True
-                raise RuntimeError('请检查 appid 和 access token 参数是否正确')
+                raise RuntimeError('Please check if the appid and access token parameters are correct')
             if response.status_code == 403:
                 self.stop_next_all=True
-                raise RuntimeError('该角色正式版可能需要在字节后台单独开通购买')
+                raise RuntimeError('The official version of this character may need to be purchased separately in the Byte backend.')
             
             
             
             response.raise_for_status()
             logger.debug(f"code: {response.status_code} header: {response.headers}")
 
-            # 用于存储音频数据
+            # Used to store audio data
             audio_data = bytearray()
             total_audio_size = 0
             for chunk in response.iter_lines(decode_unicode=True):

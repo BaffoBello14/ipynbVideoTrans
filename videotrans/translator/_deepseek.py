@@ -55,7 +55,7 @@ class DeepSeek(BaseTrans):
             max_tokens=8192 if not self.model_name.startswith('deepseek-reasoner') else 65536
         )
 
-        logger.debug(f'[deepseek]响应:{response=}')
+        logger.debug(f'[deepseek] response:{response=}')
         result = ""
         if not hasattr(response,'choices'):
             raise RuntimeError(str(response))
@@ -64,7 +64,7 @@ class DeepSeek(BaseTrans):
         if response.choices[0].message.content:
             result = response.choices[0].message.content.strip()
         else:
-            logger.warning(f'[deepseek]请求失败:{response=}')
+            logger.warning(f'[deepseek] Request failed:{response=}')
             raise RuntimeError(f"[DeepSeek] {response.choices[0].finish_reason}:{response}")
 
         match = re.search(r'<TRANSLATE_TEXT>(.*?)</TRANSLATE_TEXT>', result, re.S)

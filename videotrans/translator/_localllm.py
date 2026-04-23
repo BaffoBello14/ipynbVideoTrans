@@ -55,7 +55,7 @@ class LocalLLM(BaseTrans):
             messages=message
         )
 
-        logger.debug(f'[localllm]响应:{response=}')
+        logger.debug(f'[localllm] response:{response=}')
 
         if isinstance(response, str):
             raise RuntimeError(f'{response=}')

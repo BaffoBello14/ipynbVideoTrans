@@ -13,63 +13,63 @@ from pydub import AudioSegment
 
 @dataclass
 class BaseRecogn(BaseCon):
-    recogn_type: int = 0  # 语音识别类型
-    # 字幕检测语言
+    recogn_type: int = 0  # Speech recognition type
+    # Subtitle detection language
     detect_language: str = None
 
-    # 模型名字
+    # Model name
     model_name: Optional[str] = None
-    # 待识别的 16k wav
+    # 16k wav to be recognized
     audio_file: Optional[str] = None
-    # 临时目录
+    # Temporary directory
     cache_folder: Optional[str] = None
 
-    # 任务id
+    #task id
     uuid: Optional[str] = None
-    # 启用cuda加速
+    # Enable cuda acceleration
     is_cuda: bool = False
 
-    # 字幕嵌入类型 0 1234
+    # Subtitle embedding type 0 1234
     subtitle_type: int = 0
-    # 是否已结束
+    # Is it ended?
     has_done: bool = field(default=False, init=False)
-    # 错误消息
+    # Error message
     error: str = field(default='', init=False)
-    # 识别 api地址
+    # Identify api address
     api_url: str = field(default='', init=False)
-    # 设备类型 cpu cuda
+    #Device type cpu cuda
     device: str = field(init=False, default='cpu')
-    # 标点符号
+    # punctuation marks
     flag: List[str] = field(init=False, default_factory=list)
-    # 存放返回的字幕列表
+    # Store the returned subtitle list
     raws: List = field(default_factory=list, init=False)
-    # 文字之间连接，中日韩粤语直接相连，其他空格
+    # Connect between words, Chinese, Japanese, Korean and Cantonese are directly connected, other spaces
     join_word_flag: str = field(init=False, default=' ')
-    # 是否需转为简体中文
+    # Do you need to convert to Simplified Chinese?
     jianfan: bool = False
-    # 字幕行字符数
+    #Number of characters in subtitle lines
     maxlen: int = 20
     audio_duration: int = 0
-    max_speakers: int = -1  # 说话人，-1不启用说话人，0=不限制数量，>0 说话人最大数量
-    llm_post: bool = False  # 是否进行llm重新断句，如果是，则无需在识别完成后进行简单修正
-    speech_timestamps: List = field(default_factory=list)  # vad切割好的数据
+    max_speakers: int = -1  # Speaker, -1 does not enable speakers, 0 = no limit on the number, >0 maximum number of speakers
+    llm_post: bool = False  #Whether to perform llm re-segmentation? If so, there is no need to make simple corrections after the recognition is completed.
+    speech_timestamps: List = field(default_factory=list)  # vad cut data
     recogn2pass: bool = False
 
     def __post_init__(self):
         super().__post_init__()
-        logger.debug(f'BaseRecogn 初始化')
+        logger.debug(f'BaseRecognition initialization')
         if not tools.vail_file(self.audio_file):
             raise RuntimeError(f'No {self.audio_file}')
         self.device = 'cuda' if self.is_cuda else 'cpu'
-        # 常见标点
+        # Common punctuation marks
         self.flag = [",", ".", "?", "!", ";", "，", "。", "？", "；", "！"]
-        # 逗号等软性标点
+        # Soft punctuation such as commas
         self.half_flag = [",", "，", "-", "、", ":", "："]
-        # 句子终止标点
+        # Sentence termination punctuation
         self.end_flag = [".", "。", "?", "？", "!", "！"]
-        # 连接字符 中日韩粤语 直接连接，无需空格，其他语言空格连接
+        # Connecting characters Chinese, Japanese, Korean and Cantonese are connected directly without spaces. Other languages are connected with spaces.
         self.join_word_flag = " "
-        # 中日韩文字
+        # Chinese, Japanese and Korean characters
         self.is_cjk = False
 
         if self.detect_language and self.detect_language[:2].lower() in ['zh', 'ja', 'ko', 'yu']:
@@ -82,8 +82,8 @@ class BaseRecogn(BaseCon):
             self.maxlen = int(float(settings.get('other_len', 60)))
             self.jianfan = False
 
-    # 有些识别渠道需要预先使用VAD切割为合适时长的音频片段，然后再对片段识别，每个识别结果即为一条字幕
-    # whisper模型并且没有选中预先分割，无需切割
+    # Some recognition channels need to use VAD to cut audio clips of appropriate length in advance, and then recognize the clips. Each recognition result is a subtitle.
+    # whisper model and pre-split unchecked, no need to cut
     def _vad_split(self):
         _st = time.time()
         _vad_type = settings.get('vad_type', 'tenvad')
@@ -92,20 +92,20 @@ class BaseRecogn(BaseCon):
 
         _threshold = float(settings.get('threshold', 0.5))
         _min_speech = max(int(float(settings.get('min_speech_duration_ms', 1000))), 0)
-        # ten-vad 不得低于500ms
+        # ten-vad must not be less than 500ms
         if _vad_type == 'tenvad':
             _min_speech = max(_min_speech, 500)
 
-        # 最长不得大于30s,并且不得小于 _min_speech
+        # The longest time shall not be greater than 30s, and shall not be less than _min_speech
         _max_speech = max(min(int(float(settings.get('max_speech_duration_s', 6)) * 1000), 30000), _min_speech + 1000)
-        # 静音阈值不得低于50ms
+        # The silence threshold must not be lower than 50ms
         _min_silence = max(int(settings.get('min_silence_duration_ms', 600)), 50)
         if self.recogn2pass:
-            # 2次识别，均减半，以便生成简短的字幕
+            # 2 recognitions, both halved, to generate short subtitles
             _min_speech = int(max(500, _min_speech // 2))
-            # 不可低于 _min_speech+1000 并且不可大于3000ms
+            # Cannot be less than _min_speech+1000 and cannot be greater than 3000ms
             _max_speech = int(max(_max_speech // 2, _min_speech + 1000))
-            # 不可大于1000ms，并且不可小于50ms
+            # Cannot be greater than 1000ms, and cannot be less than 50ms
             _min_silence = max(min(1000, _min_silence // 2), 50)
 
         logger.debug(
@@ -145,7 +145,7 @@ class BaseRecogn(BaseCon):
                 raise RuntimeError(tr('No speech was detected, please make sure there is human speech in the selected audio/video and that the language is the same as the selected one.'))
             for i, it in enumerate(res):
                 text = it['text'].strip()
-                # 移除无效字幕行,全部由符号组成的行
+                # Remove invalid subtitle lines, lines composed entirely of symbols
                 if text and not re.match(r'^[,.?!;\'"_，。？；‘’“”！~@#￥%…&*（【】）｛｝《、》\$\(\)\[\]\{\}=+\<\>\s-]+$', text):
                     it['line'] = len(srt_list) + 1
                     if not it.get('startraw'):
@@ -157,24 +157,24 @@ class BaseRecogn(BaseCon):
             if not srt_list:
                 return []
 
-            # 修正时间戳重叠
+            # Fix timestamp overlap
             for i, it in enumerate(srt_list):
                 if i > 0 and srt_list[i - 1]['end_time'] > it['start_time']:
                     logger.warning(
-                        f'修正字幕时间轴重叠：将前面字幕 end_time={srt_list[i - 1]["end_time"]} 改为当前字幕 start_time, {it=}')
+                        f'Correct subtitle timeline overlap: change the previous subtitle end_time={srt_list[i - 1]["end_time"]}Change to current subtitle start_time,{it=}')
                     srt_list[i - 1]['end_time'] = it['start_time']
                     srt_list[i - 1]['endraw'] = tools.ms_to_time_string(ms=it['start_time'])
                     srt_list[i - 1]['time'] = f"{srt_list[i - 1]['startraw']} --> {srt_list[i - 1]['endraw']}"
             if self.recogn2pass:
                 return srt_list
-            # LLM重新断句，未选中合并过短字幕、whisper模型且没有预先分割，这3种情况直接返回
+            # LLM re-segments the sentence, merges short subtitles, whisper model and does not pre-segment is not selected, these three cases are returned directly
             if self.llm_post or not settings.get('merge_short_sub', True) or (
                     self.recogn_type < 2 and not settings.get('whisper_prepare')):
                 if not self.llm_post:
                     for it in srt_list:
                         it['text'] = it['text'].strip('。').strip()
                 return srt_list
-            # 合并过短的字幕到邻近字幕，以便符合 min_speech_duration_ms 要求, 第一个和最后一个字幕不合并
+            # Merge subtitles that are too short into adjacent subtitles to meet the min_speech_duration_ms requirement. The first and last subtitles are not merged.
             return self._fix_post(srt_list)
         except RetryError as e:
             raise e.last_attempt.exception()
@@ -182,37 +182,37 @@ class BaseRecogn(BaseCon):
             raise
         finally:
             self._signal(text=f'STT ended:{int(time.time() - _st)}s')
-            logger.debug(f'[语音识别]渠道{self.recogn_type},{self.model_name}:共耗时:{int(time.time() - _st)}s')
+            logger.debug(f'[Voice Recognition] Channel{self.recogn_type},{self.model_name}:Total time spent:{int(time.time() - _st)}s')
 
-    # 未选择LLM重新断句并且选了 合并短字幕，则对识别出的字幕进行简单修正
+    # If LLM is not selected to re-segment the sentence and Merge short subtitles is selected, the identified subtitles will be simply corrected.
     def _fix_post(self, srt_list):
         post_srt_raws = []
         min_speech = max(300, int(float(settings.get('min_speech_duration_ms', 1000))))
-        logger.debug(f'对识别出的字幕进行简单修正，{min_speech=}')
+        logger.debug(f'Make simple corrections to the recognized subtitles,{min_speech=}')
         for idx, it in enumerate(srt_list):
             if not it['text'].strip():
                 continue
             if idx == 0 or idx == len(srt_list) - 1 or it['end_time'] - it['start_time'] >= min_speech:
                 post_srt_raws.append(it)
             else:
-                # 小于1s
+                # Less than 1s
                 prev_diff = it['start_time'] - post_srt_raws[-1]['end_time']
                 next_diff = srt_list[idx + 1]['start_time'] - it['end_time']
-                # 前面不是标点结束，而当前是标点结束
-                # 前面是 句子中间停顿标点，而当前是句子结束 标点
-                # 距离前个更近
+                # The previous one is not the end of punctuation, but the current one is the end of punctuation
+                # The previous one was the pause punctuation in the middle of the sentence, and the current one is the punctuation mark at the end of the sentence.
+                # Closer to the previous one
                 if (post_srt_raws[-1]['text'][-1] not in self.flag and it['text'][-1] in self.flag) or (
                         post_srt_raws[-1]['text'][-1] in self.half_flag and it['text'][
                     -1] in self.end_flag) or prev_diff <= next_diff:
                     logger.warning(
-                        f'字幕时长小于{min_speech=}，需要合并进前面字幕,{prev_diff=},{next_diff=}，当前字幕={it},前面字幕={post_srt_raws[-1]}')
+                        f'Subtitle duration is less than{min_speech=}, need to be merged into the previous subtitles,{prev_diff=},{next_diff=}, current subtitles ={it}, front subtitle ={post_srt_raws[-1]}')
                     post_srt_raws[-1]['end_time'] = it['end_time']
                     post_srt_raws[-1]['endraw'] = tools.ms_to_time_string(ms=it['end_time'])
                     post_srt_raws[-1]['time'] = f"{post_srt_raws[-1]['startraw']} --> {post_srt_raws[-1]['endraw']}"
                     post_srt_raws[-1]['text'] += ' ' + it['text']
                 else:
                     logger.warning(
-                        f'字幕时长小于{min_speech=}，需要合并进后面字幕,{prev_diff=},{next_diff=}，当前字幕={it},后边字幕={srt_list[idx + 1]}')
+                        f'Subtitle duration is less than{min_speech=}, need to be merged into the following subtitles,{prev_diff=},{next_diff=}, current subtitles ={it},subtitles behind ={srt_list[idx + 1]}')
                     srt_list[idx + 1]['text'] = it['text'] + ' ' + srt_list[idx + 1]['text']
                     srt_list[idx + 1]['start_time'] = it['start_time']
                     srt_list[idx + 1]['startraw'] = tools.ms_to_time_string(ms=it['start_time'])
@@ -221,7 +221,7 @@ class BaseRecogn(BaseCon):
         if len(post_srt_raws) < 2:
             return post_srt_raws
 
-        # 如果第一条字幕时长小于 min_speech,并且距离第二条字幕空隙小于2s，则将第一条字幕合并进第二条；空隙过大则是独立句子，不合并
+        # If the duration of the first subtitle is less than min_speech, and the gap between the first subtitle and the second subtitle is less than 2s, merge the first subtitle into the second one; if the gap is too large, it will be an independent sentence and will not be merged.
         if post_srt_raws[0]['end_time'] - post_srt_raws[0]['start_time'] < min_speech and post_srt_raws[1][
             'start_time'] - post_srt_raws[0]['end_time'] < 2000:
             post_srt_raws[1]['start_time'] = post_srt_raws[0]['start_time']
@@ -230,7 +230,7 @@ class BaseRecogn(BaseCon):
         if len(post_srt_raws) < 2:
             return post_srt_raws
 
-        # 再判断最后一条字幕时长时长短于 min_speech，并且距离前面字幕空隙小于2s，则最后一条合并进前面一条；空隙过大则是独立句子，不合并
+        # Then determine that the duration of the last subtitle is shorter than min_speech, and the gap from the previous subtitle is less than 2s, then the last subtitle will be merged into the previous one; if the gap is too large, it will be an independent sentence and will not be merged.
         if post_srt_raws[-1]['end_time'] - post_srt_raws[-1]['start_time'] < min_speech and post_srt_raws[-1][
             'start_time'] - post_srt_raws[-2]['end_time'] < 2000:
             post_srt_raws[-2]['end_time'] = post_srt_raws[-1]['end_time']
@@ -239,64 +239,64 @@ class BaseRecogn(BaseCon):
         if len(post_srt_raws) < 2:
             return post_srt_raws
 
-        # 如果当前字幕中间有标点，且第一个标点前的字 词小于4，而前条字幕末尾无标点，则给前个字幕
+        # If there is punctuation in the middle of the current subtitle, and the number of words before the first punctuation is less than 4, and there is no punctuation at the end of the previous subtitle, give the previous subtitle
         for i, it in enumerate(post_srt_raws):
             if i == 0 or i == len(post_srt_raws) - 1:
                 continue
             if post_srt_raws[i - 1]['end_time'] != it['start_time']:
                 continue
             t = [t for t in re.split(r'[,.，。]', it['text']) if t.strip()]
-            # 无有效文字
+            # No valid text
             if not t:
                 it['text'] = ''
                 continue
-            # 仅一组
+            # Only one group
             if len(t) == 1:
                 continue
-            # 中日韩字数>3
+            #Chinese, Japanese and Korean word count>3
             if self.is_cjk and len(t[0].strip()) > 3:
                 continue
 
-            # 上个字幕末尾有标点
+            # There is punctuation at the end of the previous subtitle
             if post_srt_raws[i - 1]['text'][-1] in self.flag:
                 continue
             if not self.is_cjk and len(t[0].strip().split(' ')) > 3:
                 continue
 
             post_srt_raws[i - 1]['text'] += self.join_word_flag + it['text'][:len(t[0]) + 1]
-            logger.warning(f'该字幕原始文字={it["text"]}, 合并进前条字幕的文字={it["text"][:len(t[0]) + 1]}')
+            logger.warning(f'The original text of this subtitle ={it["text"]}, the text merged into the previous subtitle ={it["text"][:len(t[0]) + 1]}')
             it['text'] = it["text"][len(t[0]) + 1:]
-            logger.warning(f'剩余问文字 {it["text"]}\n')
+            logger.warning(f'Remaining question text{it["text"]}\n')
 
-        # 如果当前字幕中间有标点，且最后一个标点前的字 词小于4，则给后个字幕
+        # If there is punctuation in the middle of the current subtitle, and the words before the last punctuation are less than 4, give the next subtitle
         for i, it in enumerate(post_srt_raws):
             if i == 0 or i == len(post_srt_raws) - 1:
                 continue
             if post_srt_raws[i + 1]['start_time'] != it['end_time']:
                 continue
             t = [t for t in re.split(r'[,.，。]', it['text']) if t.strip()]
-            # 无有效文字
+            # No valid text
             if not t:
                 it['text'] = ''
                 continue
-            # 仅一组
+            # Only one group
             if len(t) == 1:
                 continue
-            # 字幕末尾有标点
+            # There is punctuation at the end of the subtitles
             if it['text'][-1] in self.flag:
                 continue
-            # 中日韩字数>3
+            #Chinese, Japanese and Korean word count>3
             if self.is_cjk and len(t[-1].strip()) > 3:
                 continue
             if not self.is_cjk and len(t[-1].strip().split(' ')) > 3:
                 continue
 
             post_srt_raws[i + 1]['text'] = it['text'][-len(t[-1]):] + self.join_word_flag + post_srt_raws[i + 1]['text']
-            logger.warning(f'该字幕原始文字={it["text"]}, 合并到下条字幕文字={it["text"][-len(t[-1]):]}')
+            logger.warning(f'The original text of this subtitle ={it["text"]}, merge into next subtitle text ={it["text"][-len(t[-1]):]}')
             it['text'] = it["text"][:-len(t[-1])]
-            logger.warning(f'剩余文字 {it["text"]}\n')
+            logger.warning(f'remaining text{it["text"]}\n')
 
-        # 移除末尾所有 . 。
+        # Remove all . at the end.
         for it in post_srt_raws:
             it['text'] = it['text'].strip('。').strip()
         return [it for it in post_srt_raws if it['text'].strip()]
@@ -318,48 +318,48 @@ class BaseRecogn(BaseCon):
         speech_chunks = self.speech_timestamps
         speech_len = len(speech_chunks)
         audio = AudioSegment.from_wav(self.audio_file)
-        # 对大于30s的强制拆分，小于1s的强制合并，防止某些识别引擎不支持而报错
+        # For forced splitting of more than 30 seconds and forced merging of less than 1 second, this prevents errors from being reported if some recognition engines do not support it.
         check_1 = []
-        # 裁切出的最小语音时长需符合 min_speech_duration_ms 要求，合并过短的
+        # The minimum trimmed speech duration must meet the min_speech_duration_ms requirement, merge those that are too short
         min_speech_duration_ms = min(25000, max(int(settings.get('min_speech_duration_ms', 1000)), 1000))
         for i, it in enumerate(speech_chunks):
             diff = it[1] - it[0]
             if diff < min_speech_duration_ms:
-                # 距离前面空隙
+                # Gap from front
                 prev_diff = it[0] - check_1[-1][1] if len(check_1) > 0 else None
-                # 距离下个空隙
+                # Distance to next gap
                 next_diff = speech_chunks[i + 1][0] - it[1] if i < speech_len - 1 else None
                 if prev_diff is None and next_diff is not None:
                     logger.warning(
-                        f'cut_audio 时长小于 {min_speech_duration_ms}ms 需要下个字幕左移开始时间,{diff=},{prev_diff=},{next_diff=}')
-                    # 插入后边
+                        f'cut_audio duration is less than{min_speech_duration_ms}ms requires the start time of the next subtitle left shift,{diff=},{prev_diff=},{next_diff=}')
+                    # Insert after
                     speech_chunks[i + 1][0] = it[0]
                 elif prev_diff is not None and next_diff is None:
-                    # 前面延长
+                    # Front extension
                     logger.warning(
-                        f'cut_audio 时长小于 {min_speech_duration_ms}ms 需要前面字幕延长结束时间,{diff=},{prev_diff=},{next_diff=}')
+                        f'cut_audio duration is less than{min_speech_duration_ms}ms requires the previous subtitles to extend the end time,{diff=},{prev_diff=},{next_diff=}')
                     check_1[-1][1] = it[1]
                 elif prev_diff is not None and next_diff is not None:
                     if prev_diff < next_diff:
                         check_1[-1][1] = it[1]
                         logger.warning(
-                            f'cut_audio 时长小于 {min_speech_duration_ms}ms 需要前面字幕延长结束时间,{diff=},{prev_diff=},{next_diff=}')
+                            f'cut_audio duration is less than{min_speech_duration_ms}ms requires the previous subtitles to extend the end time,{diff=},{prev_diff=},{next_diff=}')
                     else:
                         speech_chunks[i + 1][0] = it[0]
                         logger.warning(
-                            f'cut_audio 时长小于 {min_speech_duration_ms}ms 需要下个字幕左移开始时间,{diff=},{prev_diff=},{next_diff=}')
+                            f'cut_audio duration is less than{min_speech_duration_ms}ms requires the start time of the next subtitle left shift,{diff=},{prev_diff=},{next_diff=}')
                 else:
                     check_1.append(it)
             elif diff < 30000:
                 check_1.append(it)
             else:
-                # 超过30s，一分为二
+                # More than 30s, divided into two
                 off = diff // 2
                 check_1.append([it[0], it[0] + off])
                 check_1.append([it[0] + off, it[1]])
-                logger.warning(f'cut_audio 超过30s需要拆分，{diff=}')
+                logger.warning(f'cut_audio needs to be split if it exceeds 30 seconds.{diff=}')
         speech_chunks = check_1
-        # 两侧填充空白
+        #Padding blanks on both sides
         silent_segment = self._padforaudio()
         for i, it in enumerate(speech_chunks):
             start_ms, end_ms = it[0], it[1]
@@ -380,7 +380,7 @@ class BaseRecogn(BaseCon):
 
         return data
 
-    # True 退出
+    # True exit
     def _exit(self) -> bool:
         if app_cfg.exit_soft or (self.uuid and self.uuid in app_cfg.stoped_uuid_set):
             return True

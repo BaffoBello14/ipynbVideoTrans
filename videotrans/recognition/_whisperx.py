@@ -1,4 +1,4 @@
-# zh_recogn 识别
+# zh_recognition recognition
 import json
 from dataclasses import dataclass
 from pathlib import Path
@@ -32,7 +32,7 @@ class WhisperXRecogn(BaseRecogn):
         raws = []
         speaker_list = []
         speaker_name = []
-        logger.debug(f'[whisperx-api]:指定最大说话人：{self.max_speakers=}')
+        logger.debug(f'[whisperx-api]: Specify the maximum speaker:{self.max_speakers=}')
         with open(self.audio_file, 'rb') as file:
 
             transcript = client.audio.transcriptions.create(
@@ -41,7 +41,7 @@ class WhisperXRecogn(BaseRecogn):
                 language=self.detect_language[:2].lower(),
                 response_format="diarized_json",
                 extra_body={
-                  "max_speakers": self.max_speakers #-1不启用，0=不限制数量，>0 最大数量
+                  "max_speakers": self.max_speakers #-1 is not enabled, 0=no limit on quantity, >0 maximum quantity
                 },
             )
 
@@ -65,7 +65,7 @@ class WhisperXRecogn(BaseRecogn):
 
         if speaker_name:
             try:
-                #默认未识别出后的回退说话人
+                #Default fallback speaker after unrecognized
                 next_spk=f'spk{len(speaker_name)}'
                 for i,it in enumerate(speaker_list):
                     if it=='-':
@@ -75,7 +75,7 @@ class WhisperXRecogn(BaseRecogn):
                 if speaker_list:
                     Path(f'{self.cache_folder}/speaker.json').write_text(json.dumps(speaker_list), encoding='utf-8')
             except Exception as e:
-                logger.exception(f'说话人重排序出错，忽略{e}',exc_info=True)
+                logger.exception(f'Speaker reordering error, ignored{e}',exc_info=True)
         return raws
 
 

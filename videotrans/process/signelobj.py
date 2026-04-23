@@ -2,14 +2,14 @@ import multiprocessing,os
 from videotrans.configure.config import app_cfg,settings,logger
 
 # ==========================================
-# 增加一个包装类：用来兼容调用方对 Future 对象的习惯 (.result())
+# Add a wrapper class: to be compatible with the caller's habit of Future objects (.result())
 # ==========================================
 class AsyncResultFutureWrapper:
     def __init__(self, async_result):
         self.async_result = async_result
 
     def result(self, timeout=None):
-        # 把 Pool 独有的 .get() 伪装成 Future 的 .result()
+        # Disguise Pool’s unique .get() as Future’s .result()
         return self.async_result.get(timeout=timeout)
         
     def done(self):
@@ -17,7 +17,7 @@ class AsyncResultFutureWrapper:
 
 
 # ==========================================
-# 全局单例管理器
+# Global singleton manager
 # ==========================================
 
 
@@ -39,7 +39,7 @@ class GlobalProcessManager:
 
         import psutil
         mem=psutil.virtual_memory()
-        # 最多8个进程,最小2个
+        # Maximum 8 processes, minimum 2
         return int(max( min( (mem.available/(1024**3))//4 , 8, cpu_count ), 2))
 
     @classmethod
@@ -49,12 +49,12 @@ class GlobalProcessManager:
             process_max_gpu=int(float(settings.get('process_max_gpu',0)))
         except:
             process_max_gpu=0
-        # 手动设置了gpu进程数量，则优先级最高,例如虽然只有一卡，但显存特别大，可手动设置多个gpu进程
+        # If the number of gpu processes is manually set, the priority will be the highest. For example, although there is only one card, but the video memory is very large, multiple gpu processes can be manually set.
         if process_max_gpu>0:
             return int(min(process_max_gpu,8,cpu_count))
         if app_cfg.NVIDIA_GPU_NUMS<0:
             return 1
-        # 没有显卡 或 没有启用多显卡，则只启动一个gpu进程
+        # If there is no graphics card or multiple graphics cards are not enabled, only one gpu process will be started.
         if  app_cfg.NVIDIA_GPU_NUMS<1 or not bool(settings.get('multi_gpus',False)):
             return 1
         
@@ -67,23 +67,21 @@ class GlobalProcessManager:
         if cls._executor_cpu is None:
             ctx = multiprocessing.get_context('spawn')
             max_workers=cls.get_cpu_process_nums()
-            logger.debug(f'CPU进程池:{max_workers=}')
+            logger.debug(f'CPU process pool:{max_workers=}')
             #cls._executor_cpu = ProcessPoolExecutor(max_workers=int(max_workers), mp_context=ctx)
             cls._executor_cpu = ctx.Pool(
                 processes=int(max_workers), 
-                maxtasksperchild=1  # <--- CPU 也让它跑完就死，彻底释放物理内存
+                maxtasksperchild=1  # <--- The CPU will also let it die after running and completely release the physical memory.
             )
         return cls._executor_cpu
 
     @classmethod
     def get_executor_gpu(cls):
-        """
-        max_workers 设为 1，意味着同一时间只能跑一个 AI 任务。
-        """
+        '\n        max_workers is set to 1, which means that only one AI task can be run at the same time.\n        '
         if cls._executor_gpu is None:
             ctx = multiprocessing.get_context('spawn')
             max_workers=cls.get_gpu_process_nums()
-            logger.debug(f'GPU进程池:{max_workers=}')
+            logger.debug(f'GPU process pool:{max_workers=}')
             #cls._executor_gpu = ProcessPoolExecutor(max_workers=int(max_workers), mp_context=ctx)
             cls._executor_gpu = ctx.Pool(
                 processes=int(max_workers), 
@@ -102,9 +100,9 @@ class GlobalProcessManager:
     @classmethod
     def submit_task_gpu(cls, func, **kwargs):
         _executor=cls.get_executor_gpu()
-        # Pool 提交任务的方法是 apply_async，且需要指定 kwds 关键字参数
+        # The method for Pool to submit tasks is apply_async, and the kwds keyword parameter needs to be specified.
         async_result = _executor.apply_async(func, kwds=kwargs)
-        # 返回我们写的包装类，这样主逻辑拿到后依然可以写 future.result()
+        # Return the wrapper class we wrote, so that after getting the main logic, we can still write future.result()
         return AsyncResultFutureWrapper(async_result)
         #return _executor.submit(func, **kwargs)
 

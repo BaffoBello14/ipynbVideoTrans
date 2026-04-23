@@ -40,8 +40,8 @@ class FasterAll(BaseRecogn):
             else:
                 repo_id = self.model_name
             tools.check_and_down_hf(self.model_name,repo_id,self.local_dir,callback=self._process_callback)
-        # 批量时预先vad切分
-        # 否则后断句处理
+        # Pre-vad splitting in batches
+        # Otherwise, post-sentence processing
         if settings.get('whisper_prepare'):
             self._vad_split()
             self.speech_timestamps_file=f'{self.cache_folder}/speech_timestamps_{time.time()}.json'
@@ -51,7 +51,7 @@ class FasterAll(BaseRecogn):
     def _openai(self):
         title=f'STT use {self.model_name}'
         self._signal(text=title)
-        # 起一个进程
+        # Start a process
         logs_file = f'{TEMP_DIR}/{self.uuid}/openai-{self.detect_language}-{time.time()}.log'
         kwargs = {
             "prompt": settings.get(

@@ -27,7 +27,7 @@ class TransAPI(BaseTrans):
         self._add_internal_host_noproxy(self.api_url)
 
 
-    # 实际发出请求获取结果
+    # Actually make a request to get the result
     @retry(retry=retry_if_not_exception_type(NO_RETRY_EXCEPT), stop=(stop_after_attempt(RETRY_NUMS)),
            wait=wait_fixed(RETRY_DELAY), before=before_log(logger, logging.INFO),
            after=after_log(logger, logging.INFO))
@@ -37,7 +37,7 @@ class TransAPI(BaseTrans):
         requrl = f"{self.api_url}target_language={self.target_code}&source_language={self.source_code[:2] if self.source_code else ''}&text={text}&secret={params.get('trans_secret','')}"
 
         response = requests.get(url=requrl)
-        logger.debug(f'[TransAPI]返回:{response=}')
+        logger.debug(f'[TransAPI] returns:{response=}')
         response.raise_for_status()
         jsdata = response.json()
         if jsdata['code'] != 0:

@@ -1,4 +1,4 @@
-# stt项目识别接口
+# stt project identification interface
 import os
 from dataclasses import dataclass
 from typing import List, Dict, Union
@@ -10,22 +10,7 @@ from videotrans.configure.config import tr,settings,params,app_cfg,logger
 from videotrans.recognition._base import BaseRecogn
 from videotrans.util import tools
 
-"""
-            请求发送：以二进制形式发送键名为 audio 的wav格式音频数据，采样率为16k、通道为1
-            requests.post(api_url, files={"file": open(audio_file, 'rb')},data={language:2位语言代码,model:模型名})
-
-            失败时返回
-            res={
-                "code":1,
-                "msg":"错误原因"
-            }
-
-            成功时返回
-            res={
-                "code":0,
-                "data":srt格式字符串
-            }
-"""
+'Request to send: Send the wav format audio data with the key name audio in binary form, with a sampling rate of 16k and a channel of 1\n            requests.post(api_url, files={"file": open(audio_file, \'rb\')}, data={language: 2-digit language code, model: model name})\n\n            Return on failure\n            res={\n                "code":1,\n                "msg":"Error reason"\n            }\n\n            Returns on success\n            res={\n                "code":0,\n                "data":srt format string\n            }'
 
 from tenacity import retry, stop_after_attempt, wait_fixed, retry_if_not_exception_type, before_log, after_log
 import logging

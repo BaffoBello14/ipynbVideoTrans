@@ -61,7 +61,7 @@ class AzureTTS(BaseTTS):
 
             def bookmark_reached(event):
                 bookmarks.append({
-                    "time": event.audio_offset / 10000  # 转换为毫秒
+                    "time": event.audio_offset / 10000  # Convert to milliseconds
                 })
 
             if len(items) > 1:
@@ -158,7 +158,7 @@ class AzureTTS(BaseTTS):
             self.error=e
             raise
 
-    # 鼠标不重试，直接报错停止
+    # The mouse will not be retried, but an error will be reported and stopped.
     def _exec(self) -> None:
         if int(settings.get('azure_lines', 1)) < 100:
             self._local_mul_thread()

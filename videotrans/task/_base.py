@@ -11,31 +11,31 @@ from videotrans.util import tools
 
 @dataclass
 class BaseTask(BaseCon):
-    # 各项配置信息，例如 翻译、配音、识别渠道等
+    # Various configuration information, such as translation, dubbing, recognition channels, etc.
     cfg: TaskCfgBase = field(default_factory=TaskCfgBase, repr=False)
-    # 进度记录
+    # Progress record
     precent: int = 1
-    # 需要配音的原始字幕信息 List[dict]
+    # Original subtitle information that needs dubbing List[dict]
     queue_tts: List = field(default_factory=list, repr=False)
-    # 是否已结束
+    # Is it ended?
     hasend: bool = False
 
-    # 名字规范化处理后，应该删除的文件名字
+    # File names that should be deleted after name normalization
     shound_del_name: str = None
 
-    # 是否需要语音识别
+    # Whether speech recognition is required
     shoud_recogn: bool = False
 
-    # 是否需要字幕翻译
+    # Do you need subtitle translation?
     shoud_trans: bool = False
 
-    # 是否需要配音
+    # Do you need dubbing?
     shoud_dubbing: bool = False
 
-    # 是否需要人声分离
+    # Do you need vocal separation?
     shoud_separate: bool = False
 
-    # 是否需要嵌入配音或字幕
+    # Whether dubbing or subtitles need to be embedded
     shoud_hebing: bool = False
 
     def __post_init__(self):
@@ -43,39 +43,39 @@ class BaseTask(BaseCon):
         if self.cfg.uuid:
             self.uuid = self.cfg.uuid
 
-    # 预先处理，例如从视频中拆分音频、人声背景分离、转码等
+    # Pre-processing, such as splitting audio from video, vocal background separation, transcoding, etc.
     def prepare(self):
         pass
 
-    # 语音识别创建原始语言字幕
+    # Speech recognition creates original language subtitles
     def recogn(self):
         pass
     
-    # 说话人识别，Funasr/豆包语音识别大模型 /Deepgram 除外，再判断是否已有说话人，Gemini/openai gpt4-dia 会生成说话人
+    # Speaker recognition, excluding Funasr/Doubao speech recognition large model/Deepgram, and then determine whether there is a speaker, Gemini/openai gpt4-dia will generate a speaker
     def diariz(self):
         pass
 
-    # 将原始语言字幕翻译到目标语言字幕
+    # Translate original language subtitles to target language subtitles
     def trans(self):
         pass
 
-    # 根据 queue_tts 进行配音
+    # Dubbing based on queue_tts
     def dubbing(self):
         pass
 
-    # 配音加速、视频慢速对齐
+    # Dubbing acceleration, video slow alignment
     def align(self):
         pass
 
-    # 视频、音频、字幕合并生成结果文件
+    # Merge video, audio, and subtitles to generate result files
     def assembling(self):
         pass
 
-    # 删除临时文件，移动或复制，发送成功消息
+    # Delete temporary files, move or copy, send success message
     def task_done(self):
         pass
 
-    # 字幕是否存在并且有效
+    # Whether the subtitles exist and are valid
     def _srt_vail(self, file):
         if not file:
             return False
@@ -91,7 +91,7 @@ class BaseTask(BaseCon):
             return False
         return True
 
-    # 删掉尺寸为0的无效文件
+    # Delete invalid files with size 0
     def _unlink_size0(self, file):
         if not file:
             return
@@ -99,9 +99,9 @@ class BaseTask(BaseCon):
         if p.exists() and p.stat().st_size == 0:
             p.unlink(missing_ok=True)
 
-    # 保存字幕文件 到目标文件夹
+    # Save subtitle file to target folder
     def _save_srt_target(self, srtstr, file):
-        # 是字幕列表形式，重新组装
+        # is in the form of a subtitle list, reassembled
         try:
             txt = tools.get_srt_from_list(srtstr)
             with open(file, "w", encoding="utf-8",errors="ignore") as f:
@@ -127,11 +127,11 @@ class BaseTask(BaseCon):
             return target_srt_list
 
         if target_len>source_len:
-            logger.debug(f'翻译结果行数大于原始字幕行，截取0-{source_len}')
+            logger.debug(f'The number of lines in the translation result is greater than the original subtitle lines, so 0-{source_len}')
             return target_srt_list[:source_len]
         
         
-        logger.debug(f'翻译结果行数少于原始字幕行，追加')
+        logger.debug(f'The number of lines in the translation result is less than the original subtitle lines, append')
         for i,it in enumerate(source_srt_list):
             if i>=target_len:
                 tmp=copy.deepcopy(it)
@@ -180,7 +180,7 @@ class BaseTask(BaseCon):
             except Exception:
                 raise
         raise last_exception if last_exception else RuntimeError(f'Dubbing error')
-    # 完整流程判断是否需退出，子功能需重写
+    # The complete process determines whether to exit, and the sub-function needs to be rewritten.
     def _exit(self):
         if app_cfg.exit_soft or app_cfg.current_status != 'ing':
             self.hasend=True

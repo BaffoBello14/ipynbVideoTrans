@@ -1,4 +1,4 @@
-# 数字代表界面中的显示顺序
+# Numbers represent the display order in the interface
 import copy
 
 from videotrans.configure.config import tr,params,settings,app_cfg,logger
@@ -49,7 +49,7 @@ CAMB_TTS = 33
 MOSS_TTS = 34
 
 
-# 支持克隆的渠道
+# Support cloning channels
 SUPPORT_CLONE=[
     COSYVOICE_TTS,
     CLONE_VOICE_TTS,
@@ -113,15 +113,15 @@ _ID_NAME_DICT = {
 TTS_NAME_LIST = list(_ID_NAME_DICT.values())
 
 
-# 检查当前配音渠道是否支持所选配音语言
-# 返回True为支持，其他为不支持并返回错误字符串
+# Check whether the current dubbing channel supports the selected dubbing language
+#Return True to support, otherwise to not support and return an error string
 def is_allow_lang(langcode: str = None, tts_type: int = None):
     if langcode is None or tts_type is None:
         return True
     if tts_type == GPTSOVITS_TTS and langcode[:2] not in ['zh', 'ja', 'ko', 'en', 'yu']:
         return _ID_NAME_DICT.get(tts_type, '') + tr('Dubbing channel') + ' ' + tr('Only support') + tr(
             ['zh', 'ja', 'ko', 'en', 'yu'])
-    # 中文、英文、日文、韩文、德文、法文、俄文、葡萄牙文、西班牙文、意大利文
+    # Chinese, English, Japanese, Korean, German, French, Russian, Portuguese, Spanish, Italian
     if tts_type == QWEN3LOCAL_TTS and langcode[:2] not in ['zh', 'ja', 'ko', 'en', 'yu', 'de', 'fr', 'ru', 'pt', 'es',
                                                            'it']:
         return _ID_NAME_DICT.get(tts_type, '') + tr('Dubbing channel') + ' ' + tr('Only support') + tr(
@@ -136,8 +136,8 @@ def is_allow_lang(langcode: str = None, tts_type: int = None):
     return True
 
 
-# 判断是否填写了相关配音渠道所需要的信息
-# 正确返回True，失败返回False，并弹窗
+# Determine whether the information required by the relevant dubbing channel has been filled in
+# Return True if correct, False if failed, and pop up window
 def is_input_api(tts_type: int = None, return_str=False):
     if tts_type == OPENAI_TTS and not params.get("openaitts_key", ''):
         if return_str:
@@ -262,9 +262,9 @@ def clone_tips(tts_type,role:str='No',recogn_type=9):
         return tr('clone_dubb_tips1')+ ( tr('clone_dubb_tips2') if recogn_type <2 else '')
     return
 
-# 统一调用 tts渠道入口，通过 tts_type 调用对应渠道
+# Call the tts channel entrance uniformly, and call the corresponding channel through tts_type
 def run(*, queue_tts=None, language=None, uuid=None, play=False, is_test=False, tts_type=0,is_cuda=False) -> None:
-    # 需要并行的数量3
+    # Number of parallels required 3
     if len(queue_tts) < 1:
         return
     if app_cfg.exit_soft or (uuid and uuid in app_cfg.stoped_uuid_set):

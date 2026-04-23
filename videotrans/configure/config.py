@@ -22,7 +22,7 @@ from videotrans.util.contants import (
 
 IS_FROZEN = True if getattr(sys, 'frozen', False) else False
 SYS_TMP = Path(tempfile.gettempdir()).as_posix()
-# 程序根目录
+#Program root directory
 ROOT_DIR = Path(sys.executable).parent.as_posix() if IS_FROZEN else Path(__file__).parent.parent.parent.as_posix()
 TEMP_ROOT = f'{ROOT_DIR}/tmp'
 LOGS_DIR = f'{ROOT_DIR}/logs'
@@ -32,7 +32,7 @@ Path(f"{ROOT_DIR}/logs").mkdir(parents=True, exist_ok=True)
 Path(f"{TEMP_ROOT}").mkdir(parents=True, exist_ok=True)
 
 def _set_env():
-    # 环境变量设置
+    # Environment variable settings
     if IS_FROZEN:
         os.environ['TQDM_DISABLE'] = '1'
     os.environ['no_proxy'] = no_proxy
@@ -61,7 +61,7 @@ def _set_env():
         "PATH", "")
 
 def _set_logs():
-    # 日志初始化
+    # Log initialization
     logger = logging.getLogger('VideoTrans')
     logger.setLevel(logging.DEBUG)
     formatter = logging.Formatter('[%(levelname)s] %(message)s')
@@ -92,7 +92,7 @@ def _get_langjson_list():
                 _SUPPORT_LANG[it.stem] = it.as_posix()
     return _SUPPORT_LANG
 
-# 主进程初始化语言和翻译字典，使用 settings数据
+# The main process initializes the language and translation dictionary, using settings data
 def _init_language():
     SUPPORT_LANG=_get_langjson_list()
     try:
@@ -122,28 +122,26 @@ def _get_transobj(lang):
 
 @dataclass
 class AppCfg:
-    """
-    存储直接属于 config.py 的运行时属性 (原全局变量)。
-    """
-    # 显卡相关
+    '\n    Stores runtime properties (formerly global variables) that belong directly to config.py.\n    '
+    # Graphics card related
     NVIDIA_GPU_NUMS: int = -1
 
-    # 队列与控制
+    #Queue and control
     stoped_uuid_set: set = field(default_factory=set)
     uuid_logs_queue: Dict = field(default_factory=dict)
     global_msg: List = field(default_factory=list)
     exit_soft: bool = False
 
-    # 窗口与UI
+    # Window and UI
     child_forms: Dict = field(default_factory=dict)
     INFO_WIN: Dict = field(default_factory=lambda: {"data": {}, "win": None})
 
-    # 任务状态
+    #Task status
     queue_novice: Dict = field(default_factory=dict)
     current_status: str = "stop"
     task_countdown: int = 0
 
-    # 线程队列
+    # Thread queue
     prepare_queue: Queue = field(default_factory=lambda: Queue(maxsize=0))
     regcon_queue: Queue = field(default_factory=lambda: Queue(maxsize=0))
     diariz_queue: Queue = field(default_factory=lambda: Queue(maxsize=0))
@@ -154,7 +152,7 @@ class AppCfg:
     assemb_queue: Queue = field(default_factory=lambda: Queue(maxsize=0))
     taskdone_queue: Queue = field(default_factory=lambda: Queue(maxsize=0))
 
-    # 运行参数
+    #Run parameters
     exec_mode: str = "gui"
     video_codec: Any = None
     codec_cache: Dict = field(default_factory=dict)
@@ -172,15 +170,13 @@ class AppCfg:
 
 @dataclass
 class AppSettings:
-    """
-    AppSettings: 对应 cfg.json，包含 parse_init 功能
-    """
+    '\n    AppSettings: corresponds to cfg.json, including parse_init function\n    '
     homedir: str = ROOT_DIR + "/output"
     lang: str = ""
-    # 注意：Python属性名不能包含连字符，这里用下划线代替，save/load时处理映射
+    # Note: Python attribute names cannot contain hyphens. They are replaced by underscores here. The mapping is processed during save/load.
     initial_prompt_zh_cn: str = ""
     initial_prompt_zh_tw: str = ""
-    # 其他属性动态加载，这里仅列出部分以获得IDE提示
+    # Other properties are loaded dynamically, only some are listed here to get IDE prompts
     hf_token: str = ""
     proxy:str=''
 
@@ -198,17 +194,17 @@ class AppSettings:
 
 
     def parse_init(self, update_data: Dict = None) -> Dict:
-        """对应原 parse_init 函数，用于初始化或更新配置"""
+        'Corresponds to the original parse_init function, used to initialize or update configuration'
         default = self._get_defaults()
 
-        # 1. 如果是更新操作
+        # 1. If it is an update operation
         if update_data:
             self._apply_dict(update_data)
             self._save_to_disk()
             self.WHISPER_MODEL_LIST = re.split(r'[,，]', update_data.get('model_list', ''))
             return self.to_dict()
 
-        # 2. 如果是初始化操作
+        # 2. If it is an initialization operation
         if not Path(self._json_path).exists():
             self._apply_dict(default)
             self._save_to_disk()
@@ -221,15 +217,15 @@ class AppSettings:
             self._apply_dict(default)
             return default
 
-        # 合并逻辑
+        # Merge logic
         merged_settings = {}
-        # 处理特殊连字符键
+        # Handle special hyphen keys
         hyphen_map = {"initial_prompt_zh-cn": "initial_prompt_zh_cn", "initial_prompt_zh-tw": "initial_prompt_zh_tw"}
 
         for key, val in temp_json.items():
-            py_key = hyphen_map.get(key, key) # 转换为 python 属性名
+            py_key = hyphen_map.get(key, key) # Convert to python attribute name
 
-            # 如果不在默认值里且不是特殊key，跳过
+            # If it is not in the default value and is not a special key, skip
             if key not in default and py_key not in default:
                 continue
 
@@ -245,15 +241,15 @@ class AppSettings:
             elif value:
                 merged_settings[py_key] = value
 
-        # 扩展模型列表处理
+        #Extended model list processing
         _extend_models = ['localllm_model','zhipuai_model','deepseek_model','openrouter_model',
                           'guiji_model','zijiehuoshan_model','model_list','qwentts_models',
                           'gemini_model','chattts_voice']
 
         for m in _extend_models:
-            # 获取默认值 (作为字符串)
+            # Get default value (as string)
             def_val = str(default.get(m, ''))
-            # 获取当前json中的值
+            # Get the value in the current json
             curr_val = str(merged_settings.get(m, def_val))
 
             _de = def_val.split(',')
@@ -264,8 +260,8 @@ class AppSettings:
             merged_settings[m] = ",".join(_de)
 
 
-        # 更新到 self
-        default.update(merged_settings) # 这里 default 是 python 属性字典
+        # update to self
+        default.update(merged_settings) # Here default is the python attribute dictionary
         
         self.WHISPER_MODEL_LIST = re.split(r'[,，]', default.get('model_list', ''))
         self.ChatTTS_voicelist = re.split(r'[,，]', str(default.get('chattts_voice', '')))
@@ -274,13 +270,13 @@ class AppSettings:
         
         self._apply_dict(default)
 
-        # 保存并处理 hf_token
+        # Save and process hf_token
         self._save_to_disk()
         self._handle_hf_token()
 
         return self.to_dict()
 
-        # 后置逻辑：根据 settings 设置环境变量 (原代码逻辑)
+        #Post-logic: Set environment variables according to settings (original code logic)
 
     def _get_defaults(self) -> Dict:
         return {
@@ -294,7 +290,7 @@ class AppSettings:
             "edgetts_max_concurrent_tasks": 10,
             "edgetts_retry_nums": 3,
             "force_lib": False,
-            "hw_decode":False,# ffmpeg尝试硬件解码视频
+            "hw_decode":False,# ffmpeg attempts to hardware decode the video
             "preset": "medium",
             "ffmpeg_cmd": "",
             "aisendsrt": True,
@@ -339,7 +335,7 @@ class AppSettings:
             "backaudio_volume": 0.8,
             "loop_backaudio": 1,
             "cuda_com_type": "default",
-            "initial_prompt_zh-cn": "",  # 注意：在对象中会映射为 _zh_cn
+            "initial_prompt_zh-cn": "",  # Note: It will be mapped to _zh_cn in the object
             "initial_prompt_zh-tw": "",
             "initial_prompt_en": "",
             "initial_prompt_fr": "",
@@ -400,16 +396,16 @@ class AppSettings:
         }
 
     def _apply_dict(self, data: Dict):
-        """将字典值赋给实例属性"""
+        'Assign dictionary values to instance properties'
         for k, v in data.items():
-            # 同样处理连字符映射
+            # Also handle hyphen mapping
             attr_name = k
             if k == "initial_prompt_zh-cn": attr_name = "initial_prompt_zh_cn"
             if k == "initial_prompt_zh-tw": attr_name = "initial_prompt_zh_tw"
             setattr(self, attr_name, v)
 
     def to_dict(self) -> Dict:
-        """转换为字典，处理连字符"""
+        'Convert to dictionary, handle hyphens'
         data = {k: v for k, v in self.__dict__.items() if not k.startswith('_')}
         if "initial_prompt_zh_cn" in data:
             data["initial_prompt_zh-cn"] = data.pop("initial_prompt_zh_cn")
@@ -422,7 +418,7 @@ class AppSettings:
             with open(self._json_path, 'w', encoding='utf-8') as f:
                 f.write(json.dumps(self.to_dict(), ensure_ascii=False))
         except Exception as e:
-            logger.exception(f'保存settings到本地失败：{e}',exc_info=True)
+            logger.exception(f'Failed to save settings locally:{e}',exc_info=True)
 
     def _handle_hf_token(self):
         p = Path(ROOT_DIR + "/models/hf_token.txt")
@@ -435,7 +431,7 @@ class AppSettings:
         if not p.is_file() and self.hf_token:
             p.write_text(self.hf_token)
 
-    # 兼容 settings['key'] 访问
+    # Compatible with settings['key'] access
     def __getitem__(self, key):
         attr = key
         if key == "initial_prompt_zh-cn": attr = "initial_prompt_zh_cn"
@@ -457,9 +453,7 @@ class AppSettings:
 
 @dataclass
 class AppParams:
-    """
-    AppParams: 对应 params.json，包含 getset_params 功能
-    """
+    '\n    AppParams: corresponds to params.json, including getset_params function\n    '
     _json_path: str = f"{ROOT_DIR}/videotrans/params.json"
 
     def __post_init__(self):
@@ -470,7 +464,7 @@ class AppParams:
 
 
     def getset_params(self, update_data: Dict = None) -> Dict:
-        """对应原 getset_params 函数"""
+        'Corresponds to the original getset_params function'
         if update_data:
             self._apply_dict(update_data)
             self._save_to_disk()
@@ -484,7 +478,7 @@ class AppParams:
             except (OSError, json.JSONDecodeError):
                 pass
         else:
-            # 第一次保存
+            # First save
             self._apply_dict(default)
             self._save_to_disk()
 
@@ -492,8 +486,8 @@ class AppParams:
         return self.to_dict()
 
     def _get_defaults(self):
-        # 原 getset_params 中的 default 字典
-        # 依赖 settings 中的值
+        # The default dictionary in the original getset_params
+        # Depends on the value in settings
         return {
             "last_opendir": os.path.expanduser("~"),
             "is_cuda": False,
@@ -579,7 +573,7 @@ class AppParams:
             "qwenmt_domains": "",
             "qwenmt_model": "qwen-mt-turbo",
             "qwenmt_asr_model": "qwen3-asr-flash",
-            "qwenttslocal_refaudio": "nverguo.wav#你说四大皆空，却为何，紧闭双眼，若你睁开眼睛看看我，我不相信你，两眼空空。",
+            "qwenttslocal_refaudio": "nverguo.wav#You say the four elements are empty, but why? Close your eyes tightly. If you open your eyes and look at me, I won't believe you. Your eyes are empty.",
             "qwenttslocal_url": "",
             "qwenttslocal_prompt": "",
             "ai302_key": "",
@@ -644,7 +638,7 @@ class AppParams:
             "azure_speech_region": "",
             "azure_speech_key": "",
             "chatterbox_url": "",
-            "chatterbox_role": "nverguo.wav#你说四大皆空，却为何，紧闭双眼，若你睁开眼睛看看我，我不相信你，两眼空空。",
+            "chatterbox_role": "nverguo.wav#You say the four elements are empty, but why? Close your eyes tightly. If you open your eyes and look at me, I won't believe you. Your eyes are empty.",
             "chatterbox_cfg_weight": 0.5,
             "chatterbox_exaggeration": 0.5,
             "gptsovits_url": "",
@@ -652,15 +646,15 @@ class AppParams:
             "gptsovits_isv2": True,
             "gptsovits_extra": "pyvideotrans",
             "cosyvoice_url": "",
-            "cosyvoice_role": "nverguo.wav#你说四大皆空，却为何，紧闭双眼，若你睁开眼睛看看我，我不相信你，两眼空空。",
+            "cosyvoice_role": "nverguo.wav#You say the four elements are empty, but why? Close your eyes tightly. If you open your eyes and look at me, I won't believe you. Your eyes are empty.",
             "omnivoice_url": "",
-            "omnivoice_role": "nverguo.wav#你说四大皆空，却为何，紧闭双眼，若你睁开眼睛看看我，我不相信你，两眼空空。",
+            "omnivoice_role": "nverguo.wav#You say the four elements are empty, but why? Close your eyes tightly. If you open your eyes and look at me, I won't believe you. Your eyes are empty.",
             "fishtts_url": "",
-            "fishtts_role": "nverguo.wav#你说四大皆空，却为何，紧闭双眼，若你睁开眼睛看看我，我不相信你，两眼空空。",
+            "fishtts_role": "nverguo.wav#You say the four elements are empty, but why? Close your eyes tightly. If you open your eyes and look at me, I won't believe you. Your eyes are empty.",
             "f5tts_url": "",
             "f5tts_model": "",
             "f5tts_ttstype": "F5-TTS",
-            "f5tts_role": "nverguo.wav#你说四大皆空，却为何，紧闭双眼，若你睁开眼睛看看我，我不相信你，两眼空空。",
+            "f5tts_role": "nverguo.wav#You say the four elements are empty, but why? Close your eyes tightly. If you open your eyes and look at me, I won't believe you. Your eyes are empty.",
             "index_tts_version": 1,
             "f5tts_is_whisper": False,
             "indextts_url": "",
@@ -716,8 +710,8 @@ class AppParams:
             with open(self._json_path, 'w', encoding='utf-8') as f:
                 f.write(json.dumps(self.to_dict(), ensure_ascii=False))
         except Exception as e:
-            logger.exception(f'保存 params 到本地失败：{e}',exc_info=True)
-    # 兼容 params['key']
+            logger.exception(f'Failed to save params to local:{e}',exc_info=True)
+    # Compatible with params['key']
     def __getitem__(self, item):
         return getattr(self, item)
 
@@ -729,7 +723,7 @@ class AppParams:
 
 def tr(lang_key, *kw):
     global _transobj
-    """翻译函数"""
+    'translation function'
     if not _transobj:
         _transobj=_get_transobj(defaulelang)
     if not _transobj:
@@ -750,7 +744,7 @@ def tr(lang_key, *kw):
 
 
 def push_queue(uuid, jsondata):
-    """兼容旧的 push_queue"""
+    'Compatible with old push_queue'
     if app_cfg.exit_soft or uuid in app_cfg.stoped_uuid_set:
         return
     if uuid not in app_cfg.uuid_logs_queue:
@@ -759,32 +753,25 @@ def push_queue(uuid, jsondata):
         if isinstance(app_cfg.uuid_logs_queue[uuid], Queue):
             app_cfg.uuid_logs_queue[uuid].put_nowait(jsondata)
     except Exception as e:
-        logger.exception(f'push_queue错误：{e}', exc_info=True)
+        logger.exception(f'push_queue error:{e}', exc_info=True)
 
 
 def update_logging_level(new_level_str):
-    """动态修改日志等级"""
+    'Dynamically modify log levels'
     new_level = getattr(logging, new_level_str.upper(), logging.INFO)
     _logger = logging.getLogger('VideoTrans')
     _logger.setLevel(new_level)
     for handler in _logger.handlers:
         if isinstance(handler, (logging.StreamHandler, logging.FileHandler)):
             handler.setLevel(new_level)
-    print(f"系统日志等级已动态切换为: {new_level_str}")
+    print(f"The system log level has been dynamically switched to:{new_level_str}")
 
 @lru_cache()
 def __getattr__(name):
-    """
-    实现 config.xxx 的兼容性。
-    查找顺序:
-    1. 当前模块 (已由Python默认处理)
-    2. app_cfg (原全局变量)
-    3. settings (原 settings 字典中的键)
-    4. params (原 params 字典中的键)
-    """
+    'Implement config.xxx compatibility.\n    Search order:\n    1. Current module (handled by Python by default)\n    2. app_cfg (original global variable)\n    3. settings (key in the original settings dictionary)\n    4. params (key in the original params dictionary)'
 
-    # 2. 尝试从 settings 获取
-    # 注意：settings 有很多属性，这里利用 getattr 不抛错
+    # 2. Try to get it from settings
+    # Note: settings has many attributes. Use getattr here to avoid throwing errors.
     if name == 'settings':
         return settings
     if name == 'params':
@@ -795,13 +782,13 @@ def __getattr__(name):
         except AttributeError:
             pass
     if name.startswith('params.'):
-        # 3. 尝试从 params 获取
+        # 3. Try to get from params
         try:
             return getattr(params, name)
         except AttributeError:
             pass
 
-    # 1. 尝试从 AppCfg 获取 (原全局变量)
+    # 1. Try to get (original global variable) from AppCfg
     if hasattr(app_cfg, name):
         return getattr(app_cfg, name)
 
@@ -816,7 +803,7 @@ app_cfg: AppCfg = AppCfg()
 settings: AppSettings = AppSettings()
 params: AppParams = AppParams()
 
-HOME_DIR = settings.homedir  # 更新全局 HOME_DIR
+HOME_DIR = settings.homedir  # Update global HOME_DIR
 Path(HOME_DIR).mkdir(parents=True, exist_ok=True)
 
 defaulelang,_transobj=_init_language()
@@ -828,12 +815,12 @@ if _proxy:
     os.environ['HTTP_PROXY'] = app_cfg.proxy
 
 
-# 主进程执行
+# Main process execution
 def init_run():
     global TEMP_DIR
     TEMP_DIR = f'{TEMP_ROOT}/{os.getpid()}'
     Path(f"{TEMP_DIR}").mkdir(parents=True, exist_ok=True)
-    # 目录创建
+    # Directory creation
     Path(f'{TEMP_ROOT}/translate_cache').mkdir(exist_ok=True, parents=True)
     Path(f'{ROOT_DIR}/models').mkdir(exist_ok=True, parents=True)
     Path(f'{ROOT_DIR}/f5-tts').mkdir(exist_ok=True, parents=True)

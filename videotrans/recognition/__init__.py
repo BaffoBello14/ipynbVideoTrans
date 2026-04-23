@@ -93,15 +93,15 @@ try:
         for it in Path(f'{ROOT_DIR}/huggingface_models.txt').read_text(encoding='utf-8').strip().split("\n"):
             HUGGINGFACE_ASR_MODELS[it]=[]
 except Exception as e:
-    logger.waring(f'添加自定义 Huggingface_ASR 模型失败:{e}')
+    logger.waring(f'Adding custom Huggingface_ASR model failed:{e}')
 
-# 判断所用渠道和模型是否支持该语言的语音识别
-# langcode=语言代码，recogn_type=识别渠道,model_name=模型名字
+# Determine whether the channel and model used support speech recognition in this language
+#langcode=language code,recognin_type=recognition channel,model_name=model name
 def is_allow_lang(langcode: str = None, recogn_type: int = None, model_name=None):
-    # faster-whisper/openai-whisper支持所有语言
+    # faster-whisper/openai-whisper supports all languages
     if recogn_type in [FASTER_WHISPER,OPENAI_WHISPER,WHISPERX_API,Faster_Whisper_XXL,Whisper_CPP,OPENAI_API,AI_302,GEMINI_SPEECH,WHISPER_NET]:
         return True
-    # huggingface_asr 渠道里的 openai 和 Systran 模型也支持所有语言
+    # openai and Systran models in the huggingface_asr channel also support all languages
     if recogn_type == HUGGINGFACE_ASR and not HUGGINGFACE_ASR_MODELS.get(model_name):
         return True
     if recogn_type==HUGGINGFACE_ASR and HUGGINGFACE_ASR_MODELS.get(model_name):
@@ -114,8 +114,8 @@ def is_allow_lang(langcode: str = None, recogn_type: int = None, model_name=None
     return True
 
 
-# 自定义识别、openai-api识别、zh_recogn识别是否填写了相关信息和sk等
-# 正确返回True，失败返回False，并弹窗
+# Custom recognition, openai-api recognition, zh_recogn recognition whether relevant information and sk, etc. have been filled in
+# Return True if correct, False if failed, and pop up window
 def is_input_api(recogn_type: int = None, return_str=False):
     if recogn_type == STT_API and not params.get('stt_url',''):
         if return_str:
@@ -178,7 +178,7 @@ def is_input_api(recogn_type: int = None, return_str=False):
     return True
 
 
-# 统一入口
+# Unified entrance
 def run(*,
         detect_language=None,
         audio_file=None,
@@ -188,9 +188,9 @@ def run(*,
         recogn_type: int = 0,
         is_cuda=None,
         subtitle_type=0,
-        max_speakers=-1, # -1 不启用说话人识别,0=不限制数量，>0最大数量
+        max_speakers=-1, # -1 Do not enable speaker recognition, 0 = no limit on the number, >0 maximum number
         llm_post=False,
-        recogn2pass=False#二次对配音文件识别，生成简短字幕
+        recogn2pass=False#Second recognition of dubbing files to generate short subtitles
 
         ) -> Union[List[Dict], None]:
 

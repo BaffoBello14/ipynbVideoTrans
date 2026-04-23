@@ -52,7 +52,7 @@ def _load_mosstts_cache():
     try:
         return json.loads(cache_file.read_text(encoding='utf-8'))
     except Exception:
-        logger.exception('加载 MOSS-TTS-Nano 角色缓存失败', exc_info=True)
+        logger.exception('Failed to load MOSS-TTS-Nano role cache', exc_info=True)
         return {}
 
 
@@ -97,7 +97,7 @@ def get_mosstts_demo_map(force=False, raise_exception=False):
             _save_mosstts_cache(result)
             return result
     except Exception as e:
-        logger.exception(f'获取 MOSS-TTS-Nano demo 角色失败:{e}', exc_info=True)
+        logger.exception(f'Failed to obtain MOSS-TTS-Nano demo character:{e}', exc_info=True)
         if raise_exception:
             raise
     return cached
@@ -237,7 +237,7 @@ def get_elevenlabs_role(force=False, raise_exception=False):
         params['elevenlabstts_role'] = namelist
         return namelist
     except Exception as e:
-        logger.exception(f'获取 elevenlabs 角色失败:{e}', exc_info=True)
+        logger.exception(f'Failed to get elevenlabs role:{e}', exc_info=True)
         if raise_exception:
             raise
     return []
@@ -263,7 +263,7 @@ def get_piper_role():
         langkeys=[it.split('-')[0] for it in LANGNAME_DICT.keys()]
         for it in Path(f'{ROOT_DIR}/models/piper').rglob('*.onnx'):
             rolename=Path(it).stem
-            tmp=rolename.split('_')#tmp[0] 语言代码
+            tmp=rolename.split('_')#tmp[0] Language code
             if tmp[0] not in langkeys:
                 continue
             if tmp[0] not in rolelist:
@@ -289,7 +289,7 @@ def get_302ai():
     return role_dict
 
 
-# 字节火山语音合成角色
+# Byte Volcano speech synthesis character
 def get_doubao_rolelist(role_name=None, langcode="zh"):
 
     roledata=json.loads(Path(f'{ROOT_DIR}/videotrans/voicejson/doubao0.json').read_text(encoding='utf-8'))
@@ -349,7 +349,7 @@ def get_edge_rolelist(role_name=None,locale=None):
 def get_azure_rolelist(language=None,role_name=None):
     voice_file=ROOT_DIR + "/videotrans/voicejson/azure_voice_list.json"
     voice_list=json.loads(Path(voice_file).read_text(encoding='utf-8'))
-    # 根据角色显示名字获取真实角色
+    # Get the real character based on the character's displayed name
     if language and role_name:
         return voice_list.get(language,{}).get(role_name)
     if role_name and (not language or language=='auto'):
@@ -390,7 +390,7 @@ def get_qwen3tts_rolelist():
     voices={"No":"No"}|voices
     return voices
 
-# 本地qwentts3
+# local qwentts3
 def get_qwenttslocal_rolelist():
 
     voices={
@@ -472,7 +472,7 @@ def get_kokoro_rolelist():
     return voice_list
 
 
-# 根据 gptsovits params['gptsovits_role'] 返回以参考音频为key的dict
+# Return a dict with the reference audio as the key according to gptsovits params['gptsovits_role']
 def get_gptsovits_role():
 
     if not params.get('gptsovits_role','').strip():
@@ -551,7 +551,7 @@ def get_f5tts_role():
     return rolelist
 
 
-# 获取clone-voice的角色列表
+# Get the role list of clone-voice
 def get_clone_role(set_p=False):
     from . import help_misc
     if not params.get('clone_api',''):

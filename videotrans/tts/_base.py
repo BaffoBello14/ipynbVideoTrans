@@ -24,50 +24,43 @@ from videotrans.configure.config import tr, settings, params, app_cfg, logger, T
 
 from videotrans.util import tools
 
-"""
-edge-tts 当前线程中async异步任务
-其他渠道多线程执行
-self.error中可能是异常对象或字符串
-
-run->exec->[local_mutli]->item_task
-
-"""
+'edge-tts async asynchronous tasks in the current thread\nMulti-threaded execution of other channels\nself.error may be an exception object or a string\n\nrun->exec->[local_mutli]->item_task\n\n'
 
 
 @dataclass
 class BaseTTS(BaseCon):
-    # 配音渠道
+    # dubbing channel
     tts_type: int = 0
-    # 存放字幕信息队列
+    # Store subtitle information queue
     queue_tts: List[Dict[str, Any]] = field(default_factory=list, repr=False)
-    # queue_tts 数量
+    #queue_tts quantity
     len: int = field(init=False)
-    # 语言代码
+    # language code
     language: Optional[str] = None
-    # 唯一uid
+    # unique uid
     uuid: Optional[str] = None
-    # 是否立即播放
+    # Whether to play immediately
     play: bool = False
-    # 是否测试
+    # Whether to test
     is_test: bool = False
 
-    # 音量 音速 音调，默认 edge-tts格式
+    # Volume, speed of sound, pitch, default edge-tts format
     volume: str = field(default='+0%', init=False)
     rate: str = field(default='+0%', init=False)
     pitch: str = field(default='+0Hz', init=False)
 
-    # 是否完成
+    # Is it completed?
     has_done: int = field(default=0, init=False)
 
-    # 每次任务后暂停时间
+    # Pause time after each task
     wait_sec: float = float(settings.get('dubbing_wait', 0))
-    # 并发线程数量
+    # Number of concurrent threads
     dub_nums: int = int(float(settings.get('dubbing_thread', 1)))
-    # 存放消息
+    # Store message
     error: Optional[Any] = None
-    # 配音api地址
+    # Dubbing api address
     api_url: str = field(default='', init=False)
-    # 启用CUDA，仅 qwen3-tts-local 游戏哦啊
+    # Enable CUDA, only qwen3-tts-local game oh ah
     is_cuda:bool=False
 
     def __post_init__(self):
@@ -118,8 +111,8 @@ class BaseTTS(BaseCon):
             self.pitch = '+0Hz'
         self.pitch = self.pitch.replace('%', '')
 
-    # 入口 调用子类 _exec() 然后创建线程池调用 _item_task 或直接在 _exec 中实现逻辑
-    # 若捕获到异常，则直接抛出  出错时发送停止信号
+    # Entry call subclass _exec() and then create a thread pool to call _item_task or implement logic directly in _exec
+    # If an exception is caught, throw it directly and send a stop signal when an error occurs.
     # run->exec->_local_mul_thread->item_task
     # run->exec->item_task
     def run(self) -> None:
@@ -169,9 +162,9 @@ class BaseTTS(BaseCon):
         except Exception:
             raise
         finally:
-            logger.debug(f'[字幕配音]渠道{self.tts_type}:共耗时:{int(time.time() - _st)}s')
+            logger.debug(f'[Subtitle Dubbing] Channel{self.tts_type}:Total time spent:{int(time.time() - _st)}s')
 
-        # 试听或测试时播放
+        # Play during audition or testing
         if self.play:
             if tools.vail_file(self.queue_tts[0]['filename']):
                 tools.pygameaudio(self.queue_tts[0]['filename'])
@@ -180,12 +173,12 @@ class BaseTTS(BaseCon):
                 raise self.error.last_attempt.exception()
             raise self.error if isinstance(self.error, Exception) else RuntimeError(str(self.error))
 
-        # 记录成功数量
+        # Record the number of successes
         succeed_nums = 0
         for it in self.queue_tts:
             if not it['text'].strip() or tools.vail_file(it['filename']):
                 succeed_nums += 1
-        # 只有全部配音都失败，才视为失败
+        # Only if all dubbing fails will it be considered a failure.
         if succeed_nums < 1:
             if app_cfg.exit_soft: return
             
@@ -196,12 +189,12 @@ class BaseTTS(BaseCon):
 
         self._signal(text=tr("Dubbing succeeded {}，failed {}", succeed_nums, len(self.queue_tts) - succeed_nums))
 
-    # 用于除  edge-tts 之外的渠道，在此进行单或多线程。调用 _item_task
+    # Used for channels other than edge-tts, single or multi-threaded here. Call _item_task
     # exec->_local_mul_thread->item_task
     def _local_mul_thread(self) -> None:
         if self._exit(): return
 
-        # 单个字幕行，无需多线程
+        # Single subtitle line, no need for multi-threading
         if len(self.queue_tts) == 1 or self.dub_nums == 1:
             for k, item in enumerate(self.queue_tts):
                 if not item.get('text'):
@@ -209,7 +202,7 @@ class BaseTTS(BaseCon):
                 try:
                     self._item_task(item,k)
                 except StopRetry:
-                    # 属于致命错误，无需继续下个字幕配音,例如 api地址错误 api_name 不存在等
+                    # It is a fatal error. There is no need to continue dubbing the next subtitle. For example, the api address is wrong, api_name does not exist, etc.
                     raise
                 except RetryError as e:
                     self.error = e.last_attempt.exception()
@@ -233,10 +226,10 @@ class BaseTTS(BaseCon):
             for task in as_completed(all_task):
                 try:
                     task.result()
-                    # 属于致命错误，无需等待其他任务，肯定全部失败,例如 api地址错误 api_name 不存在等
+                    # It is a fatal error. There is no need to wait for other tasks. All tasks will definitely fail. For example, the api address is wrong, api_name does not exist, etc.
                 except StopRetry:
-                    # wait=False 表示主线程不等待正在运行的线程结束，直接往下走
-                    # 这会将还在排队但没开始运行的任务全部取消
+                    # wait=False means that the main thread does not wait for the running thread to end and goes directly down.
+                    # This will cancel all tasks that are still queued but have not started running.
                     pool.shutdown(wait=False, cancel_futures=True)
                     raise
                 except Exception as e:
@@ -247,19 +240,19 @@ class BaseTTS(BaseCon):
         except StopRetry:
             raise
         finally:
-            # 确保线程池最终被关闭
-            # 只能取消排队的任务，并让主线程不再等待。
+            # Ensure that the thread pool is eventually closed
+            # Only queued tasks can be canceled and the main thread will no longer wait.
             pool.shutdown(wait=False)
 
-    # 实际业务逻辑 子类实现 在此创建线程池，或单线程时直接创建逻辑
+    # Actual business logic subclass implementation Create a thread pool here, or create logic directly when using a single thread
     def _exec(self) -> None:
         pass
 
-    # 每条字幕任务，由线程池调用 data_item 是 queue_tts 中每个元素
+    # Each subtitle task is called by the thread pool. data_item is each element in queue_tts.
     def _item_task(self, data_item: Union[Dict, List, None],idx:int=-1) -> Union[bool, None]:
         pass
 
-    # 返回空白的16000采样率音频
+    # Return blank 16000 sample rate audio
     def _padforaudio(self, duration=1500):
         from pydub import AudioSegment
         silent_segment = AudioSegment.silent(duration=duration)

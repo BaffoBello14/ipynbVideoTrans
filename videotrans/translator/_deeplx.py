@@ -61,7 +61,7 @@ class DeepLX(BaseTrans):
 
         response = requests.post(url=self.api_url, json=jsondata)
         response.raise_for_status()
-        logger.debug(f'[DeepLX]返回响应,{response=}')
+        logger.debug(f'[DeepLX] returns response,{response=}')
 
         result = response.json()
         result = tools.cleartext(result['data'])

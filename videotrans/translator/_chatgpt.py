@@ -54,7 +54,7 @@ class ChatGPT(BaseTrans):
                     'content': f"""```srt\n{srt}\n```"""
                 }
             ]
-            logger.debug(f'需要断句的:{message=}')
+            logger.debug(f'Sentences that need to be broken up:{message=}')
             model = OpenAI(api_key=api_key, base_url=api_url, http_client=httpx.Client(proxy=self.proxy_str))
 
             response = model.chat.completions.create(
@@ -63,21 +63,21 @@ class ChatGPT(BaseTrans):
                 max_completion_tokens=max(int(params.get('chatgpt_max_token', 8192)), 8192),
                 messages=message,
                 temperature=float(settings.get('aitrans_temperature',0.2)),
-                timeout=300 # 超过5分钟为失败
+                timeout=300 # If it exceeds 5 minutes, it will fail.
             )
             if not hasattr(response, 'choices') or not response.choices:
-                logger.warning(f'[LLM re-segments]重新断句失败:{response=}')
+                logger.warning(f'[LLM re-segments] Failed to re-segment:{response=}')
                 raise RuntimeError(f"{response}")
 
             if response.choices[0].finish_reason == 'length':
                 raise RuntimeError(f"Please increase max_token")
             if not response.choices[0].message.content:
-                logger.warning(f'[LLM re-segments]重新断句失败:{response=}')
+                logger.warning(f'[LLM re-segments] Failed to re-segment:{response=}')
                 raise RuntimeError(f"{response}")
 
             result = response.choices[0].message.content
             match = re.search(r'<SRT>(.*?)</SRT>', re.sub(r'<think>(.*?)</think>', '', result, flags=re.I | re.S), re.S | re.I)
-            logger.warning(f'[LLM re-segments]重新断句结果:{result=}')
+            logger.warning(f'[LLM re-segments] Re-segmentation results:{result=}')
             if match:
                 return match.group(1)
             return result.strip()
@@ -97,14 +97,14 @@ class ChatGPT(BaseTrans):
             return "https://api.openai.com/v1"
         if not url.startswith('http'):
             url = 'http://' + url
-            # 删除末尾 /
+            # Delete the end /
         url = url.rstrip('/').lower()
         if url.find(".openai.com") > -1:
             return "https://api.openai.com/v1"
 
         if url.endswith('/v1'):
             return url
-        # 存在 /v1/xx的，改为 /v1
+        # If /v1/xx exists, change it to /v1
         if url.find('/v1/chat/')>-1:
             return re.sub(r'/v1.*$', '/v1', url,flags=re.I | re.S)
 
@@ -139,7 +139,7 @@ class ChatGPT(BaseTrans):
             max_completion_tokens=int(params.get('chatgpt_max_token', 8192)),
             messages=message
         )
-        logger.debug(f'[chatGPT]响应:{response=}')
+        logger.debug(f'[chatGPT] response:{response=}')
         result = ""
         if not hasattr(response,'choices'):
             raise RuntimeError(str(response))
@@ -149,7 +149,7 @@ class ChatGPT(BaseTrans):
         if response.choices[0].message.content:
             result = response.choices[0].message.content.strip()
         else:
-            logger.warning(f'[chatGPT]请求失败:{response=}')
+            logger.warning(f'[chatGPT] Request failed:{response=}')
             raise RuntimeError(f"[OpenAIChatGPT]{response.choices[0].finish_reason}:{response}")
 
         match = re.search(r'<TRANSLATE_TEXT>(.*?)</TRANSLATE_TEXT>',

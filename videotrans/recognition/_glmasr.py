@@ -19,7 +19,7 @@ class GLMASRRecogn(BaseRecogn):
 
     def _exec(self) -> Union[List[Dict], None]:
         if self._exit(): return
-        # 发送请求
+        # Send request
         raws = self.cut_audio()
         apikey = params.get('zhipu_key')
 

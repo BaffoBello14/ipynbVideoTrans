@@ -21,7 +21,7 @@ RETRY_DELAY = 10
 class ElevenLabsC(BaseTTS):
     def __post_init__(self):
         super().__post_init__()
-        # 是否终止所有配音，当出现401 403 授权错误 等不论多少次尝试注定失败的错误，提前终止
+        # Whether to terminate all dubbing. When 401, 403 authorization error and other errors that are destined to fail no matter how many times are tried, terminate early.
         self.stop_next_all=False
 
     def _item_task(self, data_item: dict = None,idx:int=-1):

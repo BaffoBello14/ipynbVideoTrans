@@ -20,9 +20,9 @@ class PiperTTS(BaseTTS):
         self.device="cpu"# todo cuda
         
     def _get_model_from_name(self,name):
-        # 角色名转为 piper文件夹下的子文件夹名
+        # Convert the character name to the subfolder name under the piper folder
         name_path=name.split('_')[0]+'/'+name.replace('-','/')
-        # 存放onnx文件的最终文件夹绝对路径
+        # Absolute path to the final folder where onnx files are stored
         local_dir=ROOT_DIR+'/models/piper/'+name_path
         onnx_file=f'{local_dir}/{name}.onnx'
         if Path(onnx_file).exists():
@@ -39,7 +39,7 @@ class PiperTTS(BaseTTS):
 
     
     def _exec(self):
-        # 判断模型是否存在
+        # Determine whether the model exists
         role_model={}
         _model_obj={}
         for it in self.queue_tts:
@@ -75,7 +75,7 @@ class PiperTTS(BaseTTS):
         if err > 0:
             msg=f'[{err}] errors, {ok} succeed'
             self._signal(text=msg)
-            logger.debug(f'piper配音结束：{msg}')
+            logger.debug(f"The end of piper's dubbing:{msg}")
             self.error=e
 
         try:

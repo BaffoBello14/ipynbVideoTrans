@@ -77,14 +77,14 @@ class OPENAITTS(BaseTTS):
             return "https://api.openai.com/v1"
         if not url.startswith('http'):
             url = 'http://' + url
-            # 删除末尾 /
+            # Delete the end /
         url = url.rstrip('/').lower()
         if url.find(".openai.com") > -1:
             return "https://api.openai.com/v1"
 
         if url.endswith('/v1'):
             return url
-        # 存在 /v1/xx的，改为 /v1
+        # If /v1/xx exists, change it to /v1
         if url.find('/v1/chat/') > -1:
             return re.sub(r'/v1.*$', '/v1', url,flags=re.I | re.S)
 

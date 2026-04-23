@@ -1,7 +1,7 @@
-# 语音识别，新进程执行
-# 返回元组
-# 失败：第一个值为False，则为失败，第二个值存储失败原因
-# 成功，第一个值存在需要的返回值，不需要时返回True，第二个值为None
+# Speech recognition, new process execution
+# Return tuple
+# Failure: If the first value is False, it is a failure, and the second value stores the reason for the failure.
+# Success, the first value has the required return value, returns True if not needed, and the second value is None
 from videotrans.configure.config import logger,ROOT_DIR
 
 def _write_log(file, msg):
@@ -9,19 +9,19 @@ def _write_log(file, msg):
     try:
         Path(file).write_text(msg, encoding='utf-8')
     except Exception as e:
-        logger.exception(f'写入新进程日志时出错', exc_info=True)
+        logger.exception(f'Error writing new process log', exc_info=True)
 
 
 def qwen3tts_fun(
-        queue_tts_file=None,# 配音数据存在 json文件下，根据文件路径获取
-        language='Auto',#语言
+        queue_tts_file=None,# The dubbing data is stored in the json file and is obtained according to the file path.
+        language='Auto',#language
         logs_file=None,
         defaulelang="en",
         is_cuda=False,
         prompt=None,
         model_name='1.7B',
         roledict=None,
-        device_index=0 # gpu索引
+        device_index=0 # gpu index
 ):
     import re, os, traceback, json, time
     import shutil
@@ -59,7 +59,7 @@ def qwen3tts_fun(
 
     all_roles={ r.get('role') for r in queue_tts}
     if all_roles & CUSTOM_VOICE:
-        # 存在自定义音色
+        # There is a custom tone
         CUSTOM_OBJ=Qwen3TTSModel.from_pretrained(
             f"{ROOT_DIR}/models/models--Qwen--Qwen3-TTS-12Hz-{model_name}-CustomVoice",
             device_map=device_map,
@@ -67,7 +67,7 @@ def qwen3tts_fun(
             attn_implementation=atten
         )
     if "clone" in all_roles or all_roles-CUSTOM_VOICE:
-        # 存在克隆音色
+        # There is a cloned sound
         BASE_OBJ=Qwen3TTSModel.from_pretrained(
             f"{ROOT_DIR}/models/models--Qwen--Qwen3-TTS-12Hz-{model_name}-Base",
             device_map=device_map,
@@ -101,12 +101,12 @@ def qwen3tts_fun(
                 wavfile = it.get('ref_wav', '')
                 ref_text = it.get('ref_text', '')
             else:
-                # 使用 f5-tts文件夹内音频
+                # Use the audio in the f5-tts folder
                 wavfile = f'{ROOT_DIR}/f5-tts/{role}'
                 ref_text = roledict.get(role) if roledict else None
             if not wavfile or not Path(wavfile).is_file():
-                # 仍然不存在，无参考音频不可用
-                msg = f"不存在参考音频，无法克隆:{role=},{wavfile=}"
+                # still does not exist, no reference audio is available
+                msg = f"Reference audio does not exist and cannot be cloned:{role=},{wavfile=}"
                 _write_log(logs_file, json.dumps({"type": "logs", "text": msg}))
                 continue
             kw={
@@ -124,7 +124,7 @@ def qwen3tts_fun(
         return True,None
     except Exception:
         msg = traceback.format_exc()
-        logger.exception(f'Qwen3-TTS 配音失败:{msg}', exc_info=True)
+        logger.exception(f'Qwen3-TTS dubbing failed:{msg}', exc_info=True)
         return False, msg
     finally:
         try:

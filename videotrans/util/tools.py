@@ -1,5 +1,5 @@
 # videotrans/util/tools.py
-# 移除懒加载，避免某些环境下出错
+# Remove lazy loading to avoid errors in certain environments
 
 from .help_role import *
 from .help_ffmpeg import *

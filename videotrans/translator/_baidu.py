@@ -42,15 +42,15 @@ class Baidu(BaseTrans):
             tocode = 'zh'
         requrl = f"http://api.fanyi.baidu.com/api/trans/vip/translate?q={text}&from=auto&to={tocode}&appid={params.get('baidu_appid','')}&salt={salt}&sign={sign}"
 
-        logger.debug(f'[Baidu]请求数据:{requrl=}')
+        logger.debug(f'[Baidu]Request data:{requrl=}')
         resraw = requests.get(requrl)
         resraw.raise_for_status()
         res = resraw.json()
-        logger.debug(f'[Baidu]返回响应:{res=}')
+        logger.debug(f'[Baidu]Return response:{res=}')
 
         if "error_code" in res or "trans_result" not in res or len(res['trans_result']) < 1:
-            logger.debug(f'Baidu 返回响应:{resraw}')
-            raise RuntimeError('请检查appid是否正确，或是否已开通对应服务服务是否开通' if int(res.get('error_code',0))==52003 else res['error_msg'])
+            logger.debug(f'Baidu returns response:{resraw}')
+            raise RuntimeError('Please check whether the appid is correct, or whether the corresponding service has been activated and whether the service has been activated.' if int(res.get('error_code',0))==52003 else res['error_msg'])
 
         result = [tools.cleartext(tres['dst']) for tres in res['trans_result']]
         if not result or len(result) < 1:

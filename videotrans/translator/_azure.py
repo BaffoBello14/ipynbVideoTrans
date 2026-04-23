@@ -52,7 +52,7 @@ class AzureGPT(BaseTrans):
             frequency_penalty=0,
             temperature=float(settings.get('aitrans_temperature',0.2)),
         )
-        logger.debug(f'[AzureGPT]返回响应:{response=}')
+        logger.debug(f'[AzureGPT]Return response:{response=}')
         if not hasattr(response,'choices'):
             raise RuntimeError(str(response))
         
@@ -61,7 +61,7 @@ class AzureGPT(BaseTrans):
         if response.choices[0].message.content:
             result = response.choices[0].message.content.strip()
         else:
-            logger.warning(f'[AzureGPT]请求失败:{response=}'  )
+            logger.warning(f'[AzureGPT] Request failed:{response=}'  )
             raise RuntimeError(f"[Azure] {response.choices[0].finish_reason}: {response=}")
 
         match = re.search(r'<TRANSLATE_TEXT>(.*?)</TRANSLATE_TEXT>', result, re.S)

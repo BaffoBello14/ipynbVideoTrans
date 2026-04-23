@@ -27,7 +27,7 @@ class OTT(BaseTrans):
         self._add_internal_host_noproxy(self.api_url)
 
 
-    # 实际发出请求获取结果
+    # Actually make a request to get the result
     @retry(retry=retry_if_not_exception_type(NO_RETRY_EXCEPT), stop=(stop_after_attempt(RETRY_NUMS)),
            wait=wait_fixed(RETRY_DELAY), before=before_log(logger, logging.INFO),
            after=after_log(logger, logging.INFO))

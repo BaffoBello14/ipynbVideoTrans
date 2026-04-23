@@ -13,36 +13,34 @@ from videotrans.task._base import BaseTask
 from videotrans.task._rate import TtsSpeedRate
 from videotrans.util import tools
 
-"""
-仅配音任务：对应 批量为字幕配音 面板
-"""
+'\nOnly dubbing tasks: corresponding to batch dubbing subtitles panel'
 
 
 @dataclass
 class DubbingSrt(BaseTask):
-    # 是否是 字幕多角色配音 功能
+    # Is it a subtitle multi-character dubbing function?
     out_ext:str="wav"
     is_multi_role: bool = field(init=True,default=False)
-    # 固定为True
+    # Fixed to True
     shoud_dubbing: bool = field(default=True, init=False)
     ignore_align:bool=False
-    # 多角色配音时直接使用该字幕信息
+    # Use this subtitle information directly when dubbing multiple characters
     subs:List = field(default_factory=list, repr=False)
     def __post_init__(self):
         super().__post_init__()
-        # 是否是 字幕多角色配音
-        # 输出目标位置
+        # Is it subtitles and multi-character dubbing?
+        # Output target location
         if not self.cfg.target_dir:
             self.cfg.target_dir = f"{HOME_DIR}/tts"
         if self.cfg.cache_folder:
             Path(self.cfg.cache_folder).mkdir(parents=True, exist_ok=True)
         Path(self.cfg.target_dir).mkdir(parents=True, exist_ok=True)
-        # 需要配音的字幕文件
+        # Subtitle files that require dubbing
         self.cfg.target_sub = self.cfg.name
-        # 配音后音频文件保存为
+        # After dubbing, the audio file is saved as
         self.cfg.target_wav = f'{self.cfg.target_dir}/{self.cfg.noextname}.wav'
         self._signal(text=tr("Dubbing from subtitles"))
-        logger.debug(f'配音 {self.cfg=}')
+        logger.debug(f'Dubbing{self.cfg=}')
 
 
     def dubbing(self):
@@ -53,22 +51,22 @@ class DubbingSrt(BaseTask):
             self.hasend = True
             raise
 
-    # 字幕可能是gbk gb2312 等编码，需转为 utf-8
+    # The subtitles may be gbk gb2312 and other encodings and need to be converted to utf-8
     def _convert_to_utf8_if_needed(self, file_path: str) -> str:
         import tempfile
         try:
-            # 1. 尝试以 UTF-8 编码打开并完全读取文件，检查其有效性
-            # 'strict' 是默认错误处理方式，遇到无法解码的字节会抛出 UnicodeDecodeError
+            # 1. Try to open and read the file completely in UTF-8 encoding to check its validity
+            # 'strict' is the default error handling method. UnicodeDecodeError will be thrown when encountering undecoded bytes.
             with open(file_path, 'r', encoding='utf-8', errors='strict') as f:
                 f.read()
             return file_path
         except UnicodeDecodeError:
 
-            # 2. 如果 UTF-8 解码失败，尝试使用其他常见编码
-            #    你可以根据你的实际情况调整这个列表的顺序或内容
+            # 2. If UTF-8 decoding fails, try using other common encodings
+            # You can adjust the order or content of this list according to your actual situation
             fallback_encodings = ['gbk', 'gb2312', 'big5', 'latin-1']
             original_content = None
-            # 以二进制模式读取一次文件内容，避免重复IO
+            # Read the file content once in binary mode to avoid repeated IO
             try:
                 with open(file_path, 'rb') as f:
                     raw_data = f.read()
@@ -77,19 +75,19 @@ class DubbingSrt(BaseTask):
             for encoding in fallback_encodings:
                 try:
                     original_content = raw_data.decode(encoding)
-                    break  # 只要有一个成功就跳出循环
+                    break  # As long as one succeeds, break out of the loop
                 except UnicodeDecodeError:
-                    continue  # 如果此编码也失败，则尝试下一个
+                    continue  # If this encoding also fails, try the next one
 
-            # 3. 如果所有备选编码都失败了，则无法处理
+            # 3. If all alternative encodings fail, it cannot be processed
             if original_content is None:
                 return file_path
 
-            # 4. 创建一个带名字的临时文件来保存转换后的内容
-            #    - mode='w'：以文本模式写入
-            #    - encoding='utf-8'：指定写入编码为 UTF-8
-            #    - suffix='.txt'：让临时文件保持 .txt 扩展名
-            #    - delete=False：保证在 with 语句块结束后，文件不会被自动删除
+            # 4. Create a temporary file with a name to save the converted content
+            # - mode='w': write in text mode
+            # - encoding='utf-8': Specify the writing encoding as UTF-8
+            # - suffix='.txt': keep temporary files with .txt extension
+            # - delete=False: Ensure that the file will not be automatically deleted after the with statement block ends.
             with tempfile.NamedTemporaryFile(mode='w', encoding='utf-8', suffix='.txt', delete=False) as temp_file:
                 temp_file.write(original_content)
                 temp_file_path = temp_file.name
@@ -97,10 +95,10 @@ class DubbingSrt(BaseTask):
         except FileNotFoundError:
             raise
 
-    # 配音预处理，去掉无效字符，整理开始时间
+    # Preprocessing of dubbing, removing invalid characters, and sorting out the start time
     def _tts(self) -> None:
         queue_tts = []
-        # 获取字幕
+        # Get subtitles
         try:
             rate = int(str(self.cfg.voice_rate).replace('%', ''))
         except ValueError:
@@ -109,14 +107,14 @@ class DubbingSrt(BaseTask):
             rate = f"+{rate}%"
         else:
             rate = f"{rate}%"
-        # 如果渠道是 edge-tts,并且非多角色配音 
+        # If the channel is edge-tts and not multi-character dubbing
         _enter_edgetts_single=self.cfg.tts_type == tts.EDGE_TTS and not self.is_multi_role
         if _enter_edgetts_single:
-            # 配音文件是txt
+            # The dubbing file is txt
             if self.cfg.target_sub.endswith('.txt'):
                 _enter_edgetts_single=True
             elif not self.cfg.voice_autorate and self.cfg.remove_silent_mid:
-                # 或者未自动加速 并且移除了字幕间静音
+                # Or it is not automatically accelerated and the silence between subtitles is removed.
                 _enter_edgetts_single=True
             else:
                 _enter_edgetts_single=False
@@ -125,7 +123,7 @@ class DubbingSrt(BaseTask):
         if _enter_edgetts_single:
             from edge_tts import Communicate
             import asyncio
-            # 忽略对齐
+            # Ignore alignment
             self.ignore_align=True
             self.cfg.target_sub = self._convert_to_utf8_if_needed(self.cfg.target_sub)
             
@@ -149,12 +147,12 @@ class DubbingSrt(BaseTask):
                     pitch=self.cfg.pitch
                 )
             ))
-            logger.debug(f'edge-tts配音，未音频加速，未视频慢速，未强制对齐，已删字幕间静音，使用单独文本配音')
+            logger.debug(f'edge-tts dubbing, no audio acceleration, no video slowdown, no forced alignment, deleted mute between subtitles, use separate text dubbing')
             if not self.cfg.target_wav.endswith('.mp3'):
                 tools.runffmpeg(['-y', '-i', tmp_name, '-b:a', '128k', self.cfg.target_wav])
             return
         
-        # 如果配音文件是txt，则转为单条字幕形式，以便统一处理
+        # If the dubbing file is txt, it will be converted into a single subtitle format for unified processing.
         if self.cfg.target_sub.endswith('.txt'):
             text = Path(self.cfg.target_sub).read_text(encoding='utf-8').strip()
             text = re.sub(r"(\s*?\r?\n\s*?){2,}", "\n", text,flags=re.I | re.S)
@@ -178,7 +176,7 @@ class DubbingSrt(BaseTask):
         else:
             subs = tools.get_subtitle_from_srt(self.cfg.target_sub)
 
-        # 取出每一条字幕，行号\n开始时间 --> 结束时间\n内容
+        # Take out each subtitle, line number\nStart time --> End time\nContent
         for i, it in enumerate(subs):
             if it['end_time'] < it['start_time'] or not it['text'].strip():
                 continue
@@ -205,7 +203,7 @@ class DubbingSrt(BaseTask):
 
         if not self.queue_tts or len(self.queue_tts) < 1:
             raise RuntimeError(tr('No subtitles required'))
-        # 具体配音操作
+        # Specific dubbing operations
         tts.run(
             queue_tts=self.queue_tts,
             language=self.cfg.target_language_code,
@@ -213,7 +211,7 @@ class DubbingSrt(BaseTask):
             tts_type=self.cfg.tts_type,
             is_cuda=self.cfg.is_cuda
         )
-        # 如果需要单独保存每条字幕的配音
+        # If you need to save the dubbing of each subtitle separately
         if settings.get('save_segment_audio', False):
             outname = self.cfg.target_dir + f'/segment_audio_{self.cfg.noextname}'
             Path(outname).mkdir(parents=True, exist_ok=True)
@@ -228,12 +226,12 @@ class DubbingSrt(BaseTask):
 
     
     
-    # 音频加速对齐字幕
+    #Audio acceleration aligned subtitles
     def align(self) -> None:
-        # txt配音并且是 edgetts，已结束
+        # txt dubbing and edgetts, ended
         if self.ignore_align:
             return
-        # 只有一行
+        # Only one line
         if len(self.queue_tts) == 1:
             if self.cfg.tts_type != tts.EDGE_TTS:
                 tools.runffmpeg(['-y', '-i', self.queue_tts[0]['filename'], '-b:a', '128k', self.cfg.target_wav])
@@ -243,20 +241,20 @@ class DubbingSrt(BaseTask):
             self._signal(text=tr("Sound speed alignment stage"))
         try:
             target_path = Path(self.cfg.target_wav)
-            # 目前文件夹内存在同名，则添加时间后缀
+            # If the current folder has the same name, add the time suffix
             if target_path.is_file() and target_path.stat().st_size > 0:
                 self.cfg.target_wav = self.cfg.target_wav[:-4] + f'-{datetime.datetime.now().strftime("%Y%m%d-%H%M%S")}{target_path.suffix}'
-            # txt 配音 不音频加速，移除字幕间静音即有空隙也忽略，直接配音文件相连
-            # 单独配音功能不强制对齐
+            # txt dubbing without audio acceleration, removing the mute between subtitles and ignoring any gaps, directly connecting the dubbing files
+            # The separate dubbing function does not force alignment
             rate_inst = TtsSpeedRate(
                 queue_tts=self.queue_tts,
                 uuid=self.uuid,
-                shoud_audiorate=self.cfg.voice_autorate if not self.cfg.target_sub.endswith('.txt') else False,# txt 配音禁止自动加速，需要移除字幕静音，即直接相连即可
+                shoud_audiorate=self.cfg.voice_autorate if not self.cfg.target_sub.endswith('.txt') else False,# txt dubbing prohibits automatic acceleration, you need to remove subtitle mute, that is, connect directly
                 raw_total_time=self.queue_tts[-1]['end_time'],
                 target_audio=self.cfg.target_wav,
                 cache_folder=self.cfg.cache_folder,
-                remove_silent_mid=self.cfg.remove_silent_mid if not self.cfg.target_sub.endswith('.txt') else True, # 是否移除字幕间空隙 仅在未自动加速时才起作用,txt配音时移除，即直接音频文件相连
-                align_sub_audio=False # 不对齐字幕 仅在未自动加速时才起作用
+                remove_silent_mid=self.cfg.remove_silent_mid if not self.cfg.target_sub.endswith('.txt') else True, # Whether to remove the gap between subtitles. This only works when automatic acceleration is not enabled. It is removed when dubbing txt, that is, the audio file is directly connected.
+                align_sub_audio=False # Unaligned subtitles only works when not automatically accelerated
             )
             self.queue_tts = rate_inst.run()
 
@@ -282,7 +280,7 @@ class DubbingSrt(BaseTask):
             
         try:
             if Path(self.cfg.target_wav).is_file():
-                # 移除末尾静音
+                # Remove silence at the end
                 tools.remove_silence_from_end(self.cfg.target_wav, is_start=False)
                 self._signal(text=f"{self.cfg.name}", type='succeed')
                 if self.out_ext.lower()!='wav':

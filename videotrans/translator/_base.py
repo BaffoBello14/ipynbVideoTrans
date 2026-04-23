@@ -20,38 +20,38 @@ _GLOBAL_CONTEXT="""
 """
 @dataclass
 class BaseTrans(BaseCon):
-    # 翻译渠道
+    # translation channel
     translate_type:int=0
-    # 存放待翻译的字幕列表字典,{text,time,line}
+    # Store the subtitle list dictionary to be translated, {text, time, line}
     text_list: List[dict] = field(default_factory=list)
-    # 唯一任务id
+    # Unique task id
     uuid: Optional[str] = None
-    # 测试时不使用缓存
+    # Do not use cache when testing
     is_test: bool = False
-    # 原始语言代码
+    # Original language code
     source_code: str = ""
-    #目标语言代码
+    #Target language code
     target_code: str = ""
-    # 对于AI渠道，这是目标语言的自然语言表达，其他渠道等于 target_code
+    # For AI channels, this is the natural language expression in the target language, for other channels it is equal to target_code
     target_language_name: str = ""
 
-    # 翻译API 地址
+    # Translate API address
     api_url: str = field(default="", init=False)
-    # 模型名
+    #Model name
     model_name: str = field(default="", init=False)
 
-    # 同时翻译的字幕行数量
+    # Number of subtitle lines translated simultaneously
     trans_thread: int = 5
-    # 翻译后暂停秒
+    # Pause seconds after translation
     wait_sec: float = float(settings.get('translation_wait', 0))
-    # 以srt格式发送
+    #Send in srt format
     aisendsrt: bool = False
-    # 原始完整字幕，当ai翻译时可作为上下文背景信息
+    # Original complete subtitles, which can be used as contextual background information when translated by AI
     full_origin_subtitles:str=""
 
     def __post_init__(self):
         super().__post_init__()
-        #是AI翻译渠道并且选中了以完整字幕发送
+        # is the AI translation channel and is selected to send with full subtitles
         if settings.get('aisendsrt', False) and self.translate_type in translator.AI_TRANS_CHANNELS:
             self.aisendsrt=True
         if self.aisendsrt and settings.get('aitrans_context'):
@@ -61,9 +61,9 @@ class BaseTrans(BaseCon):
             self.trans_thread = int(settings.get('trans_thread', 5))
         else:
             self.trans_thread = int(settings.get('aitrans_thread', 20))
-    # 发出请求获取内容 data=[text1,text2,text] | text
-    # 按行翻译时，data=[text_str,...]
-    # AI发送完整字幕时 data=srt_string
+    # Make a request to get the content data=[text1,text2,text] | text
+    # When translating by line, data=[text_str,...]
+    # When AI sends complete subtitles data=srt_string
     def _item_task(self, data: Union[List[str], str]) -> str:
         pass
 
@@ -72,21 +72,21 @@ class BaseTrans(BaseCon):
             return True
         return False
 
-    # 实际操作 run|runsrt -> _item_task
+    # Actual operation run|runsrt -> _item_task
     def run(self) -> Union[List, str, None]:
-        # 开始对分割后的每一组进行处理
+        # Start processing each group after splitting
         Path(TEMP_DIR).mkdir(parents=True, exist_ok=True)
         _st=time.time()
         self._signal(text="")
         if hasattr(self,'_download'):
             self._download()
 
-        # 如果是不是以 完整字幕格式发送，则组成字符串列表，否则组成 [dict,dict] 列表，每个dict都是字幕行信息
+        # If it is sent in complete subtitle format, form a string list, otherwise form a [dict,dict] list, each dict is subtitle line information
         if not self.aisendsrt:
-            # 是文字列表  [text_str,...]
+            # is a text list [text_str,...]
             source_text = [t['text'].replace("\n"," ") for t in self.text_list]
         else:
-            # 是srt格式字幕列表 [{text,line,time},...]
+            # is a list of subtitles in srt format [{text,line,time},...]
             source_text=self.text_list
 
 
@@ -103,7 +103,7 @@ class BaseTrans(BaseCon):
         finally:
             if hasattr(self,'_unload'):
                 self._unload()
-            logger.debug(f'[字幕翻译]渠道{self.translate_type},{self.model_name}:共耗时:{int(time.time()-_st)}s')
+            logger.debug(f'[Subtitle Translation] Channel{self.translate_type},{self.model_name}:Total time spent:{int(time.time()-_st)}s')
             
     @staticmethod
     def _merge_lines_into_sentences(lines: list) -> tuple:
@@ -184,7 +184,7 @@ class BaseTrans(BaseCon):
                 target_list.append("")   # continuation line: TTS will skip it
 
         max_i = len(target_list)
-        logger.debug(f'以普通文本行按行翻译：原始行数:{len(self.text_list)},翻译后行数:{max_i}')
+        logger.debug(f'Line-by-line translation in normal text lines: Original number of lines:{len(self.text_list)}, number of translated lines:{max_i}')
         for i, it in enumerate(self.text_list):
             if i < max_i:
                 self.text_list[i]['text'] = target_list[i]
@@ -192,17 +192,17 @@ class BaseTrans(BaseCon):
                 self.text_list[i]['text'] = ""
         return self.text_list
 
-    # 发送完整字幕格式内容进行翻译
-    # 此时 _item_task 接收的是 srt格式的字符串
+    # Send full subtitle format content for translation
+    # At this time, _item_task receives a string in srt format
     def _run_srt(self,split_source_text):
         raws_list=[]
         for i, it in enumerate(split_source_text):
-            # 是字幕类表，此时 it=[{text,line,time}]
+            # is the subtitle class table, at this time it=[{text,line,time}]
             if self._exit(): return
             self._signal(text=tr('starttrans') + f' {i} ')
             for j, srt in enumerate(it):
                 it[j]['text'] = srt['text'].strip().replace("\n", " ")
-            # 组成合法的srt格式字符串
+            # Form a legal srt format string
             srt_str = "\n\n".join(
                 [f"{srt_dict['line']}\n{srt_dict['time']}\n{srt_dict['text'].strip()}" for srt_dict in it])
             result = self._get_cache(srt_str)
@@ -215,11 +215,11 @@ class BaseTrans(BaseCon):
 
             self._signal(text=result, type='subtitle')
             tmp=tools.get_subtitle_from_srt(result, is_file=False)
-            #logger.debug(f'\n原始待翻译文本:{srt_str=}\n翻译结果:{result=}\n整理后：{tmp=}')
+            #logger.debug(f'\nOriginal text to be translated: {srt_str=}\nTranslation result: {result=}\nAfter finishing: {tmp=}')
             raws_list.extend(tmp)
             time.sleep(self.wait_sec)
 
-        logger.debug(f'按SRT格式翻译，原始字幕行数：{len(self.text_list)},整理为list[dict]后的行数:{len(raws_list)}')
+        logger.debug(f'Translated in SRT format, original subtitle lines:{len(self.text_list)}, the number of rows after sorting into list[dict]:{len(raws_list)}')
         for i, it in enumerate(raws_list):
             if i>=len(self.text_list):
                 continue

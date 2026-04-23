@@ -41,7 +41,7 @@ class HuggingfaceRecogn(BaseRecogn):
         raise RuntimeError(f'No recognition results found:{self.model_name}')
 
     def _pipe_asr(self):
-        # 1. 准备数据
+        # 1. Prepare data
 
         title=f"load {self.model_name}"
         self._signal(text=title)

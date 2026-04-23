@@ -45,7 +45,7 @@ class FishTTS(BaseTTS):
             data = {"text": data_item['text'],
                     "references": [{"audio": "", "text": roledict[role]['reference_text']}]}
 
-            # 克隆声音
+            # clone sound
             audio_path = f'{ROOT_DIR}/{roledict[role]["reference_audio"]}'
             if os.path.exists(audio_path):
                 data['references'][0]['audio'] = self._audio_to_base64(audio_path)
@@ -57,7 +57,7 @@ class FishTTS(BaseTTS):
 
             response.raise_for_status()
 
-            # 如果是WAV音频流，获取原始音频数据
+            # If it is a WAV audio stream, get the original audio data
             with open(data_item['filename'] + ".wav", 'wb') as f:
                 f.write(response.content)
             time.sleep(1)

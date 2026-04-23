@@ -11,14 +11,14 @@ from edge_tts.exceptions import NoAudioReceived
 from videotrans.configure.config import tr, params, settings, app_cfg, logger, ROOT_DIR
 from videotrans.tts._base import BaseTTS
 
-# edge-tts 限流，可能产生大量超时、401等错误
+# edge-tts current limit, may produce a large number of timeouts, 401 and other errors
 
 MAX_CONCURRENT_TASKS = int(settings.get('edgetts_max_concurrent_tasks',10))
 RETRY_NUMS = int(settings.get('edgetts_retry_nums',3))+1
 RETRY_DELAY = 5
 POLL_INTERVAL = 0.1
-SIGNAL_TIMEOUT = 2 # 发给UI界面的信号，超时2秒，以防UI卡顿
-SAVE_TIMEOUT = 30  # edge_tts可能限流超时，超过30s就认定失败，防止无限挂起
+SIGNAL_TIMEOUT = 2 # The signal sent to the UI interface will time out for 2 seconds to prevent the UI from lagging.
+SAVE_TIMEOUT = 30  # edge_tts may limit the current flow and timeout. If it exceeds 30s, it will be considered a failure to prevent unlimited hangs.
 
     
 @dataclass
@@ -28,7 +28,7 @@ class EdgeTTS(BaseTTS):
         self._stop_event = asyncio.Event()
         self.ends_counter = 0
         self.lock = asyncio.Lock()
-        # 默认跟随设置使用代理，如果不想使用，单独根目录下创建 edgetts-noproxy.txt 文件
+        # By default, the proxy is used according to the settings. If you do not want to use it, create the edgetts-noproxy.txt file in a separate root directory.
         self.useproxy=None if not self.proxy_str or Path(f'{ROOT_DIR}/edgetts-noproxy.txt').exists() else self.proxy_str
         
 
@@ -38,7 +38,7 @@ class EdgeTTS(BaseTTS):
             self.ends_counter += 1
 
     async def _create_audio_with_retry(self, item, index, total_tasks, semaphore):
-        # 根据角色名获取真实 配音所需的角色
+        # Get the real character required for dubbing based on the character name
         task_id = f" [{index + 1}/{total_tasks}]"
         if not item.get('text','').strip() or tools.vail_file(item['filename']):
             await self.increment_counter()
@@ -62,7 +62,7 @@ class EdgeTTS(BaseTTS):
                             item['text'], voice=item['role'], rate=self.rate,
                             volume=self.volume, proxy=self.useproxy, pitch=self.pitch, connect_timeout=5
                         )
-                        # 防止WebSocket连接或数据读取无限挂起
+                        # Prevent WebSocket connections or data reading from hanging indefinitely
                         await asyncio.wait_for(
                             communicate.save(item['filename'] + ".mp3"),
                             timeout=SAVE_TIMEOUT
@@ -82,7 +82,7 @@ class EdgeTTS(BaseTTS):
                                 timeout=SIGNAL_TIMEOUT
                             )
                         except asyncio.TimeoutError:
-                            logger.warning(f"{task_id}: 发送 UI 信号超时！")
+                            logger.warning(f"{task_id}: Sending UI signal timed out!")
 
                         return
 
@@ -91,39 +91,39 @@ class EdgeTTS(BaseTTS):
                         if attempt < RETRY_NUMS:
                             await asyncio.sleep(RETRY_DELAY)
                         else:
-                            logger.error(f"EdgeTTS配音: 已达到最大重试次数，任务失败 (超时)。")
+                            logger.error(f"EdgeTTS voiceover: The maximum number of retries has been reached and the task failed (timeout).")
                             self.error=e
-                            # 失败也是一种完成，直接返回
+                            # Failure is also a completion, return directly
                             return
                     except (NoAudioReceived, aiohttp.ClientError) as e:
                         #print(f'{e}')
                         self.error=e if not self.useproxy else f'proxy={self.useproxy}, {tr("Please turn off the clear proxy and try again")}:{e}'
-                        # 强制禁用代理重试
+                        #Force disable proxy retry
                         self.useproxy=None
                         if attempt < RETRY_NUMS:
                             await asyncio.sleep(RETRY_DELAY)
                         else:
-                            logger.error(f"{task_id}: 已达到最大重试次数，任务失败。")
-                            # 失败也是一种完成，直接返回
+                            logger.error(f"{task_id}: The maximum number of retries has been reached and the task failed.")
+                            # Failure is also a completion, return directly
                             return
 
         except asyncio.CancelledError as e:
             self.error=e
         except Exception as e:
-            logger.exception(f"{task_id}: 发生未知严重错误，任务终止。", exc_info=True)
+            logger.exception(f"{task_id}: An unknown serious error occurred and the task was terminated.", exc_info=True)
             self.error=e
         finally:
-            # 无论成功、失败、取消还是异常，都在这里统一增加计数
+            # Regardless of success, failure, cancellation or exception, increase the count here uniformly
             await self.increment_counter()
 
     async def watchdog(self, tasks):
-        """看门狗"""
+        'watchdog'
         await self._stop_event.wait()
         for task in tasks:
             task.cancel()
 
     async def _exit_monitor(self):
-        """退出监控器"""
+        'Exit monitor'
         while not self._exit():
             if self._stop_event.is_set():
                 break
@@ -136,7 +136,7 @@ class EdgeTTS(BaseTTS):
         if not self.queue_tts:
             return
         
-        logger.debug(f'本次EdgeTTS配音：重试延迟:{RETRY_DELAY},出错将重试:{RETRY_NUMS},并发:{MAX_CONCURRENT_TASKS}')
+        logger.debug(f'This EdgeTTS dubbing: retry delay:{RETRY_DELAY},If an error occurs, try again:{RETRY_NUMS},concurrency:{MAX_CONCURRENT_TASKS}')
         self._stop_event.clear()
         total_tasks = len(self.queue_tts)
         semaphore = asyncio.Semaphore(MAX_CONCURRENT_TASKS)
@@ -168,21 +168,21 @@ class EdgeTTS(BaseTTS):
         
         all_workers_done = asyncio.gather(*worker_tasks, return_exceptions=True)
         
-        # 为整体等待添加超时，防止无限挂起（例如所有任务都超时但未取消）
+        # Add a timeout to the overall wait to prevent infinite hangs (e.g. all tasks time out but are not cancelled)
         try:
             done, pending = await asyncio.wait(
                 [all_workers_done, monitor_task],
                 return_when=asyncio.FIRST_COMPLETED,
-                timeout=total_tasks * SAVE_TIMEOUT * 2  # 总任务 * 每个超时 * 2（缓冲）
+                timeout=total_tasks * SAVE_TIMEOUT * 2  #Total tasks * timeout per * 2 (buffered)
             )
         except asyncio.TimeoutError:
-            logger.error("整体执行超时！强制取消所有任务。")
+            logger.error('The overall execution timed out! Forcefully cancel all tasks.')
             self._stop_event.set()
             done, pending = await asyncio.wait([all_workers_done, monitor_task], return_when=asyncio.ALL_COMPLETED)
         
         try:
             if monitor_task not in done:
-                logger.debug("执行流程：所有配音任务结束。")
+                logger.debug('Execution process: All dubbing tasks are completed.')
                 monitor_task.cancel()
 
             watchdog_task.cancel()
@@ -194,9 +194,9 @@ class EdgeTTS(BaseTTS):
             final_count = self.ends_counter
             if final_count != total_tasks:
                 logger.error(
-                    f"!!!!!!!!!!!!!!!!!! 任务计数不匹配 !!!!!!!!!!!!!!!!!!"
-                    f"预期任务数: {total_tasks}, 实际完成数: {final_count}."
-                    f"丢失了 {total_tasks - final_count} 个任务的状态。"
+                    f"!!!!!!!!!!!!!!! Task count mismatch !!!!!!!!!!!!!!!!!!"
+                    f"Expected number of tasks:{total_tasks}, actual number completed:{final_count}."
+                    f"lost{total_tasks - final_count} The status of a task."
                     "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
                 )        
             
@@ -226,6 +226,6 @@ class EdgeTTS(BaseTTS):
             if err > 0:
                 msg=f'[{err}] errors, {ok} succeed'
                 self._signal(text=msg)
-                logger.debug(f'EdgeTTS配音结束：{msg}')
+                logger.debug(f'EdgeTTS dubbing ends:{msg}')
         finally:
             await asyncio.sleep(0.1)

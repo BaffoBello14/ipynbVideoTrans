@@ -1,4 +1,4 @@
-# zh_recogn 识别
+# zh_recognition recognition
 import re
 import time
 from dataclasses import dataclass
@@ -10,31 +10,7 @@ from videotrans.configure.config import tr,settings,params,app_cfg,logger
 from videotrans.recognition._base import BaseRecogn
 from videotrans.util import tools
 
-"""
-            请求发送：以二进制形式发送键名为 audio 的wav格式音频数据，采样率为16k、通道为1
-            requests.post(api_url, files={"audio": open(audio_file, 'rb')},data={"language":2位语言代码})
-
-            失败时返回
-            res={
-                "code":1,
-                "msg":"错误原因"
-            }
-
-            成功时返回
-            res={
-                "code":0,
-                "data":[
-                    {
-                        "text":"字幕文字",
-                        "time":'00:00:01,000 --> 00:00:06,500'
-                    },
-                    {
-                        "text":"字幕文字",
-                        "time":'00:00:06,900 --> 00:00:12,200'
-                    },
-                ]
-            }
-"""
+'Request to send: Send the wav format audio data with the key name audio in binary form, with a sampling rate of 16k and a channel of 1\n            requests.post(api_url, files={"audio": open(audio_file, \'rb\')},data={"language":2-digit language code})\n\n            Return on failure\n            res={\n                "code":1,\n                "msg":"Error reason"\n            }\n\n            Returns on success\n            res={\n                "code":0,\n                "data":[\n                    {\n                        "text":"Subtitle text",\n                        "time":\'00:00:01,000 --> 00:00:06,500\'\n                    },\n                    {\n                        "text":"Subtitle text",\n                        "time":\'00:00:06,900 --> 00:00:12,200\'\n                    },\n                ]\n            }'
 from tenacity import retry, stop_after_attempt, wait_fixed, retry_if_not_exception_type, before_log, after_log
 import logging
 
@@ -81,7 +57,7 @@ class APIRecogn(BaseRecogn):
             if "code" not in res or res['code'] != 0:
                 raise RuntimeError(f'{res["msg"]}')
             if "data" not in res or len(res['data']) < 1:
-                raise RuntimeError(f'识别出错{res=}')
+                raise RuntimeError(f'Recognition error{res=}')
             self._signal(
                 text=tools.get_srt_from_list(res['data']),
                 type='replace_subtitle'
@@ -93,11 +69,11 @@ class APIRecogn(BaseRecogn):
         api_key = params.get("recognapi_key")
         if not api_key:
             raise StopRetry(tr("api key must be filled in"))
-        # 上传 self.audio_file
+        # Upload self.audio_file
         with open(self.audio_file, "rb") as f:
             audio_file = f.read()
         files = {
-            "audio": (self.audio_file, audio_file, "audio/wav")  # Content-Type 音频类型，有些API需要特别指定
+            "audio": (self.audio_file, audio_file, "audio/wav")  # Content-Type audio type, some APIs need to be specially specified
         }
 
         response = requests.post("https://api.gladia.io/v2/upload", files=files, headers={
@@ -131,7 +107,7 @@ class APIRecogn(BaseRecogn):
         response.raise_for_status()
         id = response.json()['id']
 
-        # 获取结果
+        # Get results
         while 1:
             if app_cfg.exit_soft: return
             time.sleep(1)
@@ -161,21 +137,21 @@ class APIRecogn(BaseRecogn):
         import json
         from pathlib import Path
 
-        # 定义切片时长 (60分钟 = 60 * 60 * 1000 毫秒)
+        # Define slice duration (60 minutes = 60 * 60 * 1000 milliseconds)
         CHUNK_DURATION_MS = 60 * 60 * 1000
 
-        # 初始化客户端
+        #Initialize client
         client = Client(self.api_url,httpx_kwargs={"timeout":7200})
 
-        # 内部函数：处理单个片段的返回结果
+        #Internal function: handle the return result of a single fragment
         def _process_chunk_result(raw_text, time_offset_ms, start_line_index):
-            # 1. 使用正则表达式找到列表部分
+            # 1. Use regular expressions to find the list part
             match = re.search(r'(\[\{.*?\}\])', raw_text, re.DOTALL)
             chunk_raws = []
-            chunk_speaker_raw_list = []  # 仅收集当前片段的原始说话人标记
+            chunk_speaker_raw_list = []  # Collect only the original speaker tokens of the current segment
 
             if not match:
-                # 如果某个片段没识别出内容（可能是静音），返回空而不是报错
+                # If the content of a certain fragment is not recognized (maybe mute), return empty instead of reporting an error.
                 logger.warning(f"No subtitles found in chunk starting at {time_offset_ms}ms")
                 return [], []
 
@@ -204,50 +180,50 @@ class APIRecogn(BaseRecogn):
             if not segments:
                 return [],[]
 
-            # 2. 遍历结果并加上时间偏移
+            # 2. Traverse the results and add time offset
             for i, seg in enumerate(segments):
-                # 计算加上偏移量后的毫秒数
+                # Calculate the number of milliseconds after adding the offset
                 seg_start_ms = int(float(seg['Start']) * 1000) + time_offset_ms
                 seg_end_ms = int(float(seg['End']) * 1000) + time_offset_ms
 
                 tmp = {
-                    "line": start_line_index + i + 1,  # 累加行号
+                    "line": start_line_index + i + 1,  # Accumulate line numbers
                     "text": seg['Content'],
                     "start_time": seg_start_ms,
                     "end_time": seg_end_ms,
                 }
-                # [Noise]之类无有效信息
+                # [Noise] and the like have no valid information.
                 if re.match(r'^\[[a-zA-Z0-9\s]+\]$',seg['Content'].strip()):
                     continue
                 
-                # 假设 tools 是你类外部或全局可访问的工具
+                # Assume tools are external or globally accessible tools to your class
                 tmp['startraw'] = tools.ms_to_time_string(ms=tmp['start_time'])
                 tmp['endraw'] = tools.ms_to_time_string(ms=tmp['end_time'])
                 tmp['time'] = f"{tmp['startraw']} --> {tmp['endraw']}"
 
                 chunk_raws.append(tmp)
 
-                # 收集原始说话人信息 (例如 "Speaker 1")
+                # Collect original speaker information (e.g. "Speaker 1")
                 sp = seg.get("Speaker", '-')
                 chunk_speaker_raw_list.append(sp)
 
             return chunk_raws, chunk_speaker_raw_list
 
-        # self.audio_file 是 wav 路径
+        # self.audio_file is the wav path
         audio = AudioSegment.from_wav(self.audio_file)
         total_duration = len(audio)
 
         final_raws = []
-        all_speaker_raw_list = []  # 存储所有片段原本的说话人标记
+        all_speaker_raw_list = []  # Store the original speaker tags of all segments
         current_line = 0
 
         for i, start_ms in enumerate(range(0, total_duration, CHUNK_DURATION_MS)):
             end_ms = min(start_ms + CHUNK_DURATION_MS, total_duration)
 
-            # 切割音频
+            # Cut audio
             chunk_audio = audio[start_ms:end_ms]
 
-            # 保存临时文件
+            # Save temporary file
             temp_chunk_path = os.path.join(self.cache_folder, f"temp_chunk_{i}.wav")
             chunk_audio.export(temp_chunk_path, format="wav")
 
@@ -266,7 +242,7 @@ class APIRecogn(BaseRecogn):
                     api_name="/transcribe_audio"
                 )
 
-                # 处理返回结果，传入当前的 start_ms 作为时间偏移量
+                # Process the returned result and pass in the current start_ms as the time offset
                 logger.debug(f'vibevoice-asr:{result[0]=}')
                 chunk_data, chunk_spk = _process_chunk_result(
                     result[0],
@@ -281,37 +257,37 @@ class APIRecogn(BaseRecogn):
             except Exception as e:
                 logger.exception(f"Error processing chunk {i}: {e}")
             finally:
-                # 清理临时文件
+                # Clean up temporary files
                 if os.path.exists(temp_chunk_path):
                     os.remove(temp_chunk_path)
         if not final_raws:
             raise RuntimeError(f'VibeVoice:{self.api_url} not return data')
-        # 统一处理说话人逻辑 (合并后的重排序)
-        # 这里是将所有片段的说话人混在一起处理。
-        # 警告：VibeVoice 是分段处理的，Chunk1 的 spk0 和 Chunk2 的 spk0 可能不是同一个人。
+        # Unified processing of speaker logic (reordering after merging)
+        # Here the speakers of all fragments are mixed together.
+        # Warning: VibeVoice is processed in segments, spk0 of Chunk1 and spk0 of Chunk2 may not be the same person.
 
         final_speaker_list = []
         unique_speakers = []
 
-        # 提取不重复的说话人列表保持顺序
+        # Extract a list of unique speakers to maintain order
         for sp in all_speaker_raw_list:
             if sp not in unique_speakers:
                 unique_speakers.append(sp)
 
         if unique_speakers:
             try:
-                # 生成最终的 spk0, spk1... 映射
+                # Generate the final spk0, spk1... mapping
                 for sp in all_speaker_raw_list:
                     if sp == '-':
-                        # 如果没有识别出，暂定为最后一个新编号
+                        # If not recognized, tentatively determine it as the last new number
                         final_speaker_list.append(f'spk{len(unique_speakers)}')
                     else:
                         final_speaker_list.append(f'spk{unique_speakers.index(sp)}')
 
-                # 写入最终的 speaker.json
+                #Write final speaker.json
                 if final_speaker_list:
                     Path(f'{self.cache_folder}/speaker.json').write_text(json.dumps(final_speaker_list), encoding='utf-8')
             except Exception as e:
-                logger.exception(f'说话人重排序出错，忽略{e}', exc_info=True)
+                logger.exception(f'Speaker reordering error, ignored{e}', exc_info=True)
 
         return final_raws

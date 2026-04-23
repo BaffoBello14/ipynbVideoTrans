@@ -1,4 +1,4 @@
-# zh_recogn 识别
+# zh_recognition recognition
 import json
 from dataclasses import dataclass
 from typing import List, Dict, Union
@@ -27,7 +27,7 @@ class ParaketRecogn(BaseRecogn):
         if self._exit():
             return
 
-        # 发送请求
+        # Send request
 
         client = OpenAI(api_key='123456', base_url=self.api_url)
 
