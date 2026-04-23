@@ -22,7 +22,7 @@ class Google(BaseTrans):
         self.aisendsrt = False
 
 
-    # 实际发出请求获取结果
+    # Actually make a request to get the result
     @retry( retry=retry_if_not_exception_type(NO_RETRY_EXCEPT),stop=(stop_after_attempt(RETRY_NUMS)),
            wait=wait_fixed(RETRY_DELAY), before=before_log(logger, logging.INFO),
            after=after_log(logger, logging.INFO))
@@ -38,39 +38,39 @@ class Google(BaseTrans):
         }
         response = requests.get(url, headers=headers,  verify=False)
         response.raise_for_status()
-        logger.debug(f'[Google]返回code:{response.status_code=}')
+        logger.debug(f'[Google]Return code:{response.status_code=}')
 
         re_result = re.search(r'<div\s+class=\Wresult-container\W>([^<]+?)<', response.text)
         if not re_result or len(re_result.groups()) < 1:
-            logger.debug(f'[Google]返回数据:{response.text=}')
+            logger.debug(f'[Google]Return data:{response.text=}')
             raise RuntimeError(tr("Google Translate error"))
         return re_result.group(1)
 
     def clean_srt(self, srt):
-        # 翻译后的srt字幕极大可能存在各种语法错误，符号和格式错乱
+        # The translated srt subtitles are most likely to contain various grammatical errors, symbols and formatting confusion.
         try:
             srt = re.sub(r'(\d{2})\s*[:：]\s*(\d{2})[:：]\s*(\d{2})[\s\,，]+(\d{3})', r'\1:\2:\3,\4', srt,flags=re.I | re.S)
         except re.error:
             pass
         srt = re.sub(r'&gt;', '>', srt,flags=re.I | re.S)
-        # ：: 换成 :
+        # :: Replace with :
         srt = re.sub(r'([：:])\s*', ':', srt,flags=re.I | re.S)
-        # ,， 换成 ,
+        # ,, replace with ,
         srt = re.sub(r'([,，])\s*', ',', srt,flags=re.I | re.S)
         srt = re.sub(r'([`’\'\"])\s*', '', srt,flags=re.I | re.S)
 
-        # 秒和毫秒间的.换成,
+        # Between seconds and milliseconds. Replace with,
         srt = re.sub(r'(:\d+)\.\s*?(\d+)', r'\1,\2', srt,flags=re.I | re.S)
-        # 时间行前后加空格
+        # Add spaces before and after the time line
         time_line = r'(\s?\d+:\d+:\d+(?:,\d+)?)\s*?-->\s*?(\d+:\d+:\d+(?:,\d+)?\s?)'
         srt = re.sub(time_line, r"\n\1 --> \2\n", srt,flags=re.I | re.S)
         # twenty one\n00:01:18,560 --> 00:01:22,000\n
         srt = re.sub(r'\s?[a-zA-Z ]{3,}\s*?\n?(\d{2}:\d{2}:\d{2}\,\d{3}\s*?\-\->\s*?\d{2}:\d{2}:\d{2}\,\d{3})\s?\n?',
                      "\n" + r'1\n\1\n', srt,flags=re.I | re.S)
-        # 去除多余的空行
+        # Remove extra blank lines
         srt = "\n".join([it.strip() for it in srt.splitlines() if it.strip()])
 
-        # 删掉以空格或换行连接的多个时间行
+        # Delete multiple time lines connected by spaces or newlines
         time_line2 = r'(\s\d+:\d+:\d+(?:,\d+)?)\s*?-->\s*?(\d+:\d+:\d+(?:,\d+)?\s)(?:\s*\d+:\d+:\d+(?:,\d+)?)\s*?-->\s*?(\d+:\d+:\d+(?:,\d+)?\s*)'
         srt = re.sub(time_line2, r'\n\1 --> \2\n', srt,flags=re.I | re.S)
         srt_list = [it.strip() for it in srt.splitlines() if it.strip()]
@@ -86,6 +86,6 @@ class Google(BaseTrans):
 
         srt = "\n".join(remove_list)
 
-        # 行号前添加换行符
+        # Add a newline character before the line number
         srt = re.sub(r'\s?(\d+)\s+?(\d+:\d+:\d+)', r"\n\n\1\n\2", srt,flags=re.I | re.S)
         return srt.strip().replace('&#39;', '"').replace('&quot;', "'")

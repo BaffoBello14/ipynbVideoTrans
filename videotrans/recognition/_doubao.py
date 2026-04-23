@@ -1,4 +1,4 @@
-# zh_recogn 识别
+# zh_recognition recognition
 import os
 import time
 from dataclasses import dataclass
@@ -28,7 +28,7 @@ class DoubaoRecogn(BaseRecogn):
         appid = params.get('doubao_appid','')
         access_token = params.get('doubao_access','')
 
-        # 尺寸大于190MB，转为 mp3
+        # If the size is greater than 190MB, convert to mp3
 
         tools.runffmpeg(
             ['-y', '-i', self.audio_file, '-ac', '1', '-ar', '16000', self.cache_folder + '/doubao-tmp.mp3'])
@@ -36,13 +36,13 @@ class DoubaoRecogn(BaseRecogn):
         with open(self.audio_file, 'rb') as f:
             files = f.read()
 
-        self._signal(text=f"识别可能较久，请耐心等待")
+        self._signal(text=f"Recognition may take a long time, please wait patiently.")
 
         languagelist = {"zh": "zh-CN", "en": "en-US", "ja": "ja-JP", "ko": "ko-KR", "es": "es-MX", "ru": "ru-RU",
                         "fr": "fr-FR"}
         langcode = self.detect_language[:2].lower()
         if langcode not in languagelist:
-            raise RuntimeError(f'不支持的语言代码:{langcode=}')
+            raise RuntimeError(f'Unsupported language codes:{langcode=}')
         language = languagelist[langcode]
 
         res = requests.post(
@@ -53,8 +53,8 @@ class DoubaoRecogn(BaseRecogn):
                 language=language,
                 use_itn='True',
                 caption_type='speech',
-                max_lines=1  # 每条字幕只允许一行文字
-                # words_per_line=15,#每行文字最多15个字符
+                max_lines=1  # Only one line of text is allowed per subtitle
+                # words_per_line=15,# Each line of text can have up to 15 characters
             ),
             headers={
                 'Content-Type': 'audio/wav',
@@ -65,7 +65,7 @@ class DoubaoRecogn(BaseRecogn):
         res.raise_for_status()
         res = res.json()
         if res['code'] != 0:
-            raise RuntimeError(f'请求失败:{res["message"]}')
+            raise RuntimeError(f'Request failed:{res["message"]}')
 
         job_id = res['id']
         delay = 0
@@ -73,7 +73,7 @@ class DoubaoRecogn(BaseRecogn):
             if self._exit():
                 return
             delay += 1
-            # 获取进度
+            # Get progress
             response = requests.get(
                 '{base_url}/query'.format(base_url=base_url),
                 params=dict(
@@ -89,7 +89,7 @@ class DoubaoRecogn(BaseRecogn):
 
             result = response.json()
             if result['code'] == 2000:
-                self._signal(text=f"任务处理中，请等待 {delay}s..")
+                self._signal(text=f"Task is being processed, please wait{delay}s..")
                 time.sleep(1)
             elif result['code'] > 0:
                 raise RuntimeError(result['message'])

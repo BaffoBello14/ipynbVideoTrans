@@ -43,7 +43,7 @@ _LANGUAGE_CODE_MAP = {
         "he": "__he__",
         "bn": "__bn__",
         "fa": "__fa__",
-        "fi": "__tl__",# 菲律宾语
+        "fi": "__tl__",# Filipino
         "ur": "__ur__",
         "yu": "__zh__",
         "nb": "__no__"

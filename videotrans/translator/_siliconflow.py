@@ -48,7 +48,7 @@ class SILICONFLOW(BaseTrans):
             max_tokens=int(params.get('guiji_max_tokens',8192))
         )
 
-        logger.debug(f'[siliconflow]响应:{response=}')
+        logger.debug(f'[siliconflow] response:{response=}')
         if not hasattr(response,'choices'):
             raise RuntimeError(str(response))
         if response.choices[0].finish_reason=='length':
@@ -57,7 +57,7 @@ class SILICONFLOW(BaseTrans):
         if response.choices[0].message.content:
             result = response.choices[0].message.content.strip()
         else:
-            logger.warning(f'[siliconflow]请求失败:{response=}')
+            logger.warning(f'[siliconflow]Request failed:{response=}')
             raise RuntimeError(f"[SiliconFlow] {response.choices[0].finish_reason}:{response}")
 
         match = re.search(r'<TRANSLATE_TEXT>(.*?)</TRANSLATE_TEXT>', result, re.S)

@@ -1,4 +1,4 @@
-# zh_recogn 识别
+# zh_recognition recognition
 import json
 import re
 import time
@@ -28,10 +28,10 @@ class OpenaiAPIRecogn(BaseRecogn):
     def _exec(self) -> Union[List[Dict], None]:
         if self._exit(): return
         model_name = params.get("openairecognapi_model", '')
-        # 如果是 gpt-4o-transcribe-diarize 说话人识别默认
+        # If it is gpt-4o-transcribe-diarize, speaker recognition defaults
         if model_name.lower() == 'gpt-4o-transcribe-diarize':
             return self._diarize()
-        # 如果是第三方或 gpt-4o-模型
+        # If third party or gpt-4o-model
         if not re.search(r'api\.openai\.com/v1', self.api_url) or model_name.find(
                 'gpt-4o-') > -1:
             return self._thrid_api()
@@ -51,7 +51,7 @@ class OpenaiAPIRecogn(BaseRecogn):
         self.audio_file = mp3_tmp
         if not Path(self.audio_file).is_file():
             raise StopRetry(f'No {self.audio_file}')
-        # 发送请求
+        # Send request
         raws = []
         client = OpenAI(api_key=params.get('openairecognapi_key', ''), base_url=self.api_url,
                         http_client=httpx.Client(proxy=self.proxy_str))
@@ -66,7 +66,7 @@ class OpenaiAPIRecogn(BaseRecogn):
                 timestamp_granularities=["segment"]
             )
             if not hasattr(transcript, 'segments'):
-                return self._thrid_api() #RuntimeError(f'返回字幕无时间戳，无法使用')
+                return self._thrid_api() #RuntimeError(f'The returned subtitles have no timestamp and cannot be used')
             for i, it in enumerate(transcript.segments):
                 raws.append({
                     "line": len(raws) + 1,
@@ -79,7 +79,7 @@ class OpenaiAPIRecogn(BaseRecogn):
         return raws
 
     def _thrid_api(self):
-        # 发送请求
+        # Send request
         raws = self.cut_audio()
         client = OpenAI(
             api_key=params.get('openairecognapi_key', ''),
@@ -138,7 +138,7 @@ class OpenaiAPIRecogn(BaseRecogn):
 
         if speaker_name:
             try:
-                #默认未识别出后的回退说话人
+                #Default fallback speaker after unrecognized
                 next_spk=f'spk{len(speaker_name)}'
                 for i,it in enumerate(speaker_list):
                     if it=='-':
@@ -148,7 +148,7 @@ class OpenaiAPIRecogn(BaseRecogn):
                 if speaker_list:
                     Path(f'{self.cache_folder}/speaker.json').write_text(json.dumps(speaker_list), encoding='utf-8')
             except Exception as e:
-                logger.exception(f'说话人重排序出错，忽略{e}',exc_info=True)
+                logger.exception(f'Speaker reordering error, ignored{e}',exc_info=True)
         return raws
 
     def _get_url(self, url=""):
@@ -156,14 +156,14 @@ class OpenaiAPIRecogn(BaseRecogn):
             return "https://api.openai.com/v1"
         if not url.startswith('http'):
             url = 'http://' + url
-            # 删除末尾 /
+            # Delete the end /
         url = url.rstrip('/').lower()
         if url.find(".openai.com") > -1:
             return "https://api.openai.com/v1"
 
         if url.endswith('/v1'):
             return url
-        # 存在 /v1/xx的，改为 /v1
+        # If /v1/xx exists, change it to /v1
         if url.find('/v1/chat/') > -1:
             return re.sub(r'/v1.*$', '/v1', url,flags=re.I | re.S)
 

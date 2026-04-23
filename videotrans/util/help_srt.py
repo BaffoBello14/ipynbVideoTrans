@@ -1,4 +1,4 @@
-# 将普通文本转为合法的srt字符串
+#Convert ordinary text to legal srt string
 import copy
 import os,json,re
 from datetime import timedelta
@@ -21,69 +21,69 @@ def process_text_to_srt_str(input_text: str):
     if is_srt_string(input_text):
         return input_text
 
-    # 将文本按换行符切割成列表
+    # Split the text into lists according to newline characters
     text_lines = [line.strip() for line in input_text.replace("\n", "").splitlines() if line.strip()]
 
-    # 分割大于50个字符的行
+    # Split lines larger than 50 characters
     text_str_list = []
     for line in text_lines:
         if len(line) > 50:
-            # 按标点符号分割为多个字符串
+            # Split into multiple strings according to punctuation marks
             split_lines = re.split(r'[,.，。]', line)
             text_str_list.extend([l.strip() for l in split_lines if l.strip()])
         else:
             text_str_list.append(line)
-    # 创建字幕字典对象列表
+    #Create a list of subtitle dictionary objects
     dict_list = []
-    start_time_in_seconds = 0  # 初始时间，单位秒
+    start_time_in_seconds = 0  #Initial time in seconds
 
     for i, text in enumerate(text_str_list, start=1):
-        # 计算开始时间和结束时间（每次增加1s）
+        # Calculate the start time and end time (increase by 1s each time)
         start_time = ms_to_time_string(seconds=start_time_in_seconds)
         end_time = ms_to_time_string(seconds=start_time_in_seconds + 1)
         start_time_in_seconds += 1
 
-        # 创建字幕字典对象
+        #Create subtitle dictionary object
         srt = f"{i}\n{start_time} --> {end_time}\n{text}"
         dict_list.append(srt)
 
     return "\n\n".join(dict_list)
 
 
-# 判断是否是srt字符串
+# Determine whether it is an srt string
 def is_srt_string(input_text):
     input_text = input_text.strip()
     if not input_text:
         return False
 
-    # 将文本按换行符切割成列表
+    # Split the text into lists according to newline characters
     text_lines = input_text.replace("\n", "").splitlines()
     if len(text_lines) < 3:
         return False
 
-    # 正则表达式：第一行应为1到2个纯数字
+    # Regular expression: the first line should be 1 to 2 pure numbers
     first_line_pattern = r'^\d{1,2}$'
 
-    # 正则表达式：第二行符合时间格式
+    # Regular expression: the second line conforms to the time format
     second_line_pattern = r'^\s*?\d{1,2}:\d{1,2}:\d{1,2}(\W\d+)?\s*-->\s*\d{1,2}:\d{1,2}:\d{1,2}(\W\d+)?\s*$'
 
-    # 如果前两行符合条件，返回原字符串
+    # If the first two lines meet the conditions, return the original string
     if not re.match(first_line_pattern, text_lines[0].strip()) or not re.match(second_line_pattern,
                                                                                text_lines[1].strip()):
         return False
     return True
 
 
-# 删除翻译结果的特殊字符
+# Remove special characters from translation results
 def cleartext(text: str, remove_start_end=True):
     res_text = text.replace('&#39;', "").replace('&quot;', '').replace("\u200b", " ").strip()
-    # 删掉连续的多个标点符号，只保留一个
+    # Delete multiple consecutive punctuation marks and keep only one
     res_text = re.sub(r'([，。！？,.?]\s?){2,}', ',', res_text,flags=re.I | re.S)
     return res_text
 
 
 def ms_to_time_string(*, ms=0, seconds=None, sepflag=','):
-    # 计算小时、分钟、秒和毫秒
+    # Calculate hours, minutes, seconds and milliseconds
     if seconds is None:
         td = timedelta(milliseconds=ms)
     else:
@@ -95,8 +95,8 @@ def ms_to_time_string(*, ms=0, seconds=None, sepflag=','):
     return f"{hours:02}:{minutes:02}:{seconds:02}{sepflag}{milliseconds:03}"
 
 
-# 将不规范的 时:分:秒,|.毫秒格式为  aa:bb:cc,ddd形式
-# eg  001:01:2,4500  01:54,14 等做处理
+# Convert the non-standard hour:minute:second,|.millisecond format into aa:bb:cc,ddd format
+# eg 001:01:2,4500 01:54,14 Wait for processing
 def format_time(s_time="", separate=','):
     if not s_time.strip():
         return f'00:00:00{separate}000'
@@ -124,7 +124,7 @@ def format_time(s_time="", separate=','):
 
 
 def srt_str_to_listdict(srt_string):
-    """解析 SRT 字幕字符串，更精确地处理数字行和时间行之间的关系"""
+    'Parse SRT subtitle strings to more precisely handle the relationship between number lines and time lines'
     srt_list = []
     time_pattern = r'\s?(\d+):(\d+):(\d+)([,.]\d+)?\s*?-{1,2}>\s*?(\d+):(\d+):(\d+)([,.]\d+)?\n?'
     lines = srt_string.splitlines()
@@ -133,7 +133,7 @@ def srt_str_to_listdict(srt_string):
     while i < len(lines):
         time_match = re.match(time_pattern, lines[i].strip())
         if time_match:
-            # 解析时间戳
+            # Parse timestamp
             start_time_groups = time_match.groups()[0:4]
             end_time_groups = time_match.groups()[4:8]
 
@@ -156,10 +156,10 @@ def srt_str_to_listdict(srt_string):
             text_lines = []
             while i < len(lines):
                 current_line = lines[i].strip()
-                next_line = lines[i + 1].strip() if i + 1 < len(lines) else ""  # 获取下一行，如果没有则为空字符串
+                next_line = lines[i + 1].strip() if i + 1 < len(lines) else ""  # Get the next line, or an empty string if there is none
 
-                if re.match(time_pattern, next_line):  # 判断下一行是否为时间行
-                    if re.fullmatch(r'\d+', current_line):  # 如果当前行为纯数字，则跳过
+                if re.match(time_pattern, next_line):  # Determine whether the next line is a time line
+                    if re.fullmatch(r'\d+', current_line):  # If the current line is purely numeric, skip
                         i += 1
                         break
                     else:
@@ -178,23 +178,23 @@ def srt_str_to_listdict(srt_string):
             text = re.sub(r'</?[a-zA-Z]+>', '', text.replace("\r", '').strip(),flags=re.I | re.S)
             text = re.sub(r'\n{2,}', '\n', text,flags=re.I | re.S).strip()
             it = {
-                "line": len(srt_list) + 1,  # 字幕索引，转换为整数
+                "line": len(srt_list) + 1,  # Subtitle index, converted to integer
                 "start_time": int(start_time),
-                "end_time": int(end_time),  # 起始和结束时间
-                "text": text if text else "",  # 字幕文本
+                "end_time": int(end_time),  #Start and end time
+                "text": text if text else "",  # subtitle text
             }
             it['startraw'] = ms_to_time_string(ms=it['start_time'])
             it['endraw'] = ms_to_time_string(ms=it['end_time'])
             it["time"] = f"{it['startraw']} --> {it['endraw']}"
             srt_list.append(it)
         else:
-            i += 1  # 跳过非时间行
+            i += 1  # Skip non-time lines
 
     return srt_list
 
 
-# 将字符串或者字幕文件内容，格式化为有效字幕数组对象
-# 格式化为有效的srt格式
+# Format the string or subtitle file content into a valid subtitle array object
+# Format to valid srt format
 def format_srt(content):
     result = []
     try:
@@ -204,7 +204,7 @@ def format_srt(content):
     return result
 
 
-# 将srt文件或合法srt字符串转为字典对象
+# Convert srt file or legal srt string into dictionary object
 def get_subtitle_from_srt(srtfile, *, is_file=True):
     def _readfile(file):
         content = ""
@@ -231,7 +231,7 @@ def get_subtitle_from_srt(srtfile, *, is_file=True):
         raise RuntimeError(f"The srt subtitles were not read. The file may be empty or the format does not conform to the SRT specification\n:{srtfile=}\n{content=}")
     result = format_srt(copy.copy(content))
 
-    # txt 文件转为一条字幕
+    # Convert txt file to a subtitle
     if len(result) < 1:
         result = [
             {"line": 1,
@@ -246,32 +246,32 @@ def get_subtitle_from_srt(srtfile, *, is_file=True):
 
 
 
-# 从 字幕 对象中获取 srt 字幕串
+# Get the srt subtitle string from the subtitle object
 def get_srt_from_list(srt_list):
     txt = ""
     line = 0
-    # it中可能含有完整时间戳 it['time']   00:00:01,123 --> 00:00:12,345
-    # 开始和结束时间戳  it['startraw']=00:00:01,123  it['endraw']=00:00:12,345
-    # 开始和结束毫秒数值  it['start_time']=126 it['end_time']=678
+    # it may contain a complete timestamp it['time'] 00:00:01,123 --> 00:00:12,345
+    # Start and end timestamps it['startraw']=00:00:01,123 it['endraw']=00:00:12,345
+    # Start and end millisecond values it['start_time']=126 it['end_time']=678
     for it in srt_list:
         #if not it.get('text','').strip():
         #    continue
         line += 1
         if "startraw" not in it:
-            # 存在完整开始和结束时间戳字符串 时:分:秒,毫秒 --> 时:分:秒,毫秒
+            # There is a complete start and end timestamp string hour: minute: second, millisecond --> hour: minute: second, millisecond
             if 'time' in it:
                 startraw, endraw = it['time'].strip().split(" --> ")
                 startraw = format_time(startraw.strip().replace('.', ','), ',')
                 endraw = format_time(endraw.strip().replace('.', ','), ',')
             elif 'start_time' in it and 'end_time' in it:
-                # 存在开始结束毫秒数值
+                # Existence of start and end millisecond values
                 startraw = ms_to_time_string(ms=it['start_time'])
                 endraw = ms_to_time_string(ms=it['end_time'])
             else:
                 raise Exception(
                     tr("There is no time/startraw/start_time in the subtitle in any valid timestamp form."))
         else:
-            # 存在单独开始和结束  时:分:秒,毫秒 字符串
+            # There are separate start and end hours: minutes: seconds, milliseconds strings
             startraw = it['startraw']
             endraw = it['endraw']
 
@@ -281,16 +281,11 @@ def get_srt_from_list(srt_list):
 
 def set_ass_font(srtfile: str) -> str:
     from . import help_ffmpeg
-    """
-    将 SRT 转换为 ASS，并自定义样式：
-    - 全局使用主样式（Default）
-    - 若字幕文本包含 '###'，则 '###' 后的文本使用副样式（Bottom）
-    - 删除 '###'
-    """
+    "Convert SRT to ASS and customize the style:\n    - Use the main style globally (Default)\n    - If the subtitle text contains '###', the text after '###' uses the sub-style (Bottom)\n    - Remove '###'"
     if not os.path.exists(srtfile) or os.path.getsize(srtfile) == 0:
         return os.path.basename(srtfile)
 
-    # ---------- 1. 将 SRT 转为临时 SRT（替换换行符）并调用 ffmpeg 生成 ASS ----------
+    # ---------- 1. Convert SRT to temporary SRT (replace newline characters) and call ffmpeg to generate ASS ----------
     srt_str = ""
     for it in get_subtitle_from_srt(srtfile, is_file=True):
         t = re.sub(r'\n|\\n', r'\\N', it['text'].strip())
@@ -302,21 +297,21 @@ def set_ass_font(srtfile: str) -> str:
     ass_file_path = f'{srtfile[:-3]}ass'
     help_ffmpeg.runffmpeg(['-y', '-i', edit_srt, ass_file_path])
 
-    # ---------- 2. 读取 JSON 样式配置 ----------
+    # ---------- 2. Read JSON style configuration ----------
     JSON_FILE = f'{ROOT_DIR}/videotrans/ass.json'
     if not os.path.exists(JSON_FILE):
-        logger.debug(f"[set_ass_font] 警告：JSON 配置文件不存在: {JSON_FILE}，跳过样式替换")
+        logger.debug(f"[set_ass_font] Warning: JSON configuration file does not exist:{JSON_FILE}, skip style replacement")
         return ass_file_path
 
     try:
         with open(JSON_FILE, 'r', encoding='utf-8') as f:
             style = json.load(f)
     except Exception as e:
-        logger.exception(f"[set_ass_font] 错误：无法读取或解析 JSON 文件 {JSON_FILE}: {e}", exc_info=True)
+        logger.exception(f"[set_ass_font] Error: Unable to read or parse JSON file{JSON_FILE}: {e}", exc_info=True)
         return ass_file_path
 
-    # ---------- 3. 构建两个 Style 行：Default（主样式）和 Bottom（副样式）----------
-    # 主样式属性（保持原有逻辑）
+    # ---------- 3. Build two Style rows: Default (main style) and Bottom (secondary style) ----------
+    #Main style attributes (maintain original logic)
     default_style = (
         f"Style: {style.get('Name', 'Default')},"
         f"{style.get('Fontname', 'Arial')},"
@@ -343,19 +338,19 @@ def set_ass_font(srtfile: str) -> str:
         f"{style.get('Encoding', 1)}\n"
     )
 
-    # 副样式：继承主样式，但 Fontsize 和 PrimaryColour 使用底部专用值
-    bottom_fontsize = style.get('Bottom_Fontsize', 14)          # 默认 14
-    bottom_color = style.get('Bottom_PrimaryColour', '&H0000FFFF&')  # 默认黄色
+    # Secondary style: inherit the main style, but use bottom-specific values for Fontsize and PrimaryColour
+    bottom_fontsize = style.get('Bottom_Fontsize', 14)          #Default 14
+    bottom_color = style.get('Bottom_PrimaryColour', '&H0000FFFF&')  #Default yellow
     
-    bottom_bold = style.get('Bottom_Bold', 0)  # 粗体
-    bottom_italic = style.get('Bottom_Italic', 0)  # 是否斜体
+    bottom_bold = style.get('Bottom_Bold', 0)  # bold
+    bottom_italic = style.get('Bottom_Italic', 0)  # Whether to italicize
     
     bottom_secondarycolour=style.get('Bottom_SecondaryColour', '&H00FFFFFF&')
     bottom_outlinecolour=style.get('Bottom_OutlineColour', '&H00000000&')
     bottom_backcolour=style.get('Bottom_BackColour', '&H00000000&')
     
     bottom_style = (
-        f"Style: Bottom,"                               # 固定名称 "Bottom"
+        f"Style: Bottom,"                               # Fixed name "Bottom"
         f"{style.get('Fontname', 'Arial')},"
         f"{bottom_fontsize},"
         f"{bottom_color},"
@@ -380,22 +375,22 @@ def set_ass_font(srtfile: str) -> str:
         f"{style.get('Encoding', 1)}\n"
     )
 
-    # ---------- 4. 读取 ASS 文件并替换 [V4+ Styles] 区块 ----------
+    # ---------- 4. Read the ASS file and replace the [V4+ Styles] block ----------
     try:
         with open(ass_file_path, 'r', encoding='utf-8-sig') as f:
             content = f.read()
     except Exception as e:
-        logger.exception(f"[set_ass_font] 错误：无法读取 ASS 文件: {e}", exc_info=True)
+        logger.exception(f"[set_ass_font] Error: Unable to read ASS file:{e}", exc_info=True)
         return ass_file_path
 
-    # 匹配 [V4+ Styles] 区块，保留 Format 行，替换为两个 Style 行
+    # Match the [V4+ Styles] block, keep the Format line, and replace it with two Style lines
     pattern = r'(^\[V4\+ Styles\]\s*\r?\n' \
               r'Format:[^\r\n]*\r?\n' \
               r'(?:Style:[^\r\n]*\r?\n)*)' \
               r'(?=\[|$)'
 
     def replacer(match):
-        # 提取原有的 Format 行（如果没有则使用默认格式）
+        # Extract the original Format line (if there is none, use the default format)
         format_line = None
         for line in match.group(0).splitlines():
             if line.strip().startswith("Format:"):
@@ -403,68 +398,68 @@ def set_ass_font(srtfile: str) -> str:
                 break
         if not format_line:
             format_line = "Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding\n"
-        # 返回完整的 [V4+ Styles] 区块，包含 Default 和 Bottom 两个样式
+        # Return the complete [V4+ Styles] block, including Default and Bottom styles
         return f"[V4+ Styles]\n{format_line}{default_style}{bottom_style}"
 
     try:
         new_content, _ = re.subn(pattern, replacer, content, flags=re.MULTILINE)
     except Exception as e:
-        logger.exception(f"[set_ass_font] 错误：正则替换样式失败: {e}", exc_info=True)
+        logger.exception(f"[set_ass_font] Error: Regular replacement style failed:{e}", exc_info=True)
         return ass_file_path
 
-    # ---------- 5. 处理 [Events] 中的每一条 Dialogue，对包含 '###' 的行应用副样式 ----------
+    # ---------- 5. Process each Dialogue in [Events] and apply substyles to lines containing '###' ----------
     lines = new_content.splitlines(keepends=True)
     processed_lines = []
     inside_events = False
     dialogue_pattern = re.compile(r'^(Dialogue:.*?,.*?,.*?,.*?,.*?,.*?,.*?,.*?,.*?,)(.*)$')
 
     for line in lines:
-        # 检测是否进入 [Events] 区域
+        # Check whether to enter the [Events] area
         if line.strip().startswith('[Events]'):
             inside_events = True
         elif line.strip().startswith('[') and inside_events:
-            inside_events = False  # 遇到下一个节则退出
+            inside_events = False  # Exit when encountering next section
 
         if inside_events and line.startswith('Dialogue:'):
             match = dialogue_pattern.match(line.rstrip('\r\n'))
             if match:
-                prefix = match.group(1)      # 前面固定字段
-                text = match.group(2)        # 字幕文本内容
-                # 检查是否包含 '###'
+                prefix = match.group(1)      # Fixed field in front
+                text = match.group(2)        # Subtitle text content
+                # Check if it contains '###'
                 if '###' in text:
-                    # 分割成两部分：左（主语言）和右（副语言）
-                    # 注意：文本中可能含有 \N 换行符，但 ### 通常不会跨行
+                    # Split into two parts: left (main language) and right (secondary language)
+                    # Note: The text may contain \N newlines, but ### usually does not span lines
                     parts = text.split('###', 1)
                     left = parts[0]
                     right = parts[1] if len(parts) > 1 else ''
-                    # 构建新文本：左部分 + 副样式开关 + 右部分 + 恢复主样式
-                    # 注意：如果左部分为空，直接以副样式开头；如果右部分为空，则不添加样式（但理论上 ### 后应有内容）
+                    # Build new text: left part + secondary style switch + right part + restore main style
+                    # Note: If the left part is empty, start directly with the sub-style; if the right part is empty, no style will be added (but in theory there should be content after ###)
                     new_text = ''
                     if left:
                         new_text += left
                     if right:
-                        # 使用 {\rBottom} 切换到副样式，结束后用 {\r} 恢复为 Default
+                        # Use {\rBottom} to switch to the secondary style, and use {\r} to return to Default when finished.
                         new_text += f'{{\\rBottom}}{right}{{\\r}}'
-                    # 替换原行
+                    # Replace original line
                     line = f'{prefix}{new_text}\n'
             else:
-                # 非标准格式，保留原样
+                # Non-standard format, leave it as is
                 pass
         processed_lines.append(line)
 
-    # 写回 ASS 文件
+    #Write back ASS file
     try:
         with open(ass_file_path, 'w', encoding='utf-8-sig', newline='') as f:
             f.writelines(processed_lines)
     except Exception as e:
-        logger.exception(f"[set_ass_font] 错误：无法写入 ASS 文件: {e}", exc_info=True)
+        logger.exception(f"[set_ass_font] Error: Unable to write to ASS file:{e}", exc_info=True)
 
     return ass_file_path
     
 
-# 简单换行，不保留换行符，用于视频翻译字幕嵌入
+# Simple line break, no line breaks are retained, used for video translation subtitle embedding
 def simple_wrap(text,maxlen=15,language="en"):
-    # 标点和空格列表
+    # List of punctuation and spaces
     flag = [
         ",", ".", "?", "!", ";",
         "，", "。", "？", "；", "！", " "
@@ -473,7 +468,7 @@ def simple_wrap(text,maxlen=15,language="en"):
     _len=len(text)
     if _len<maxlen+4:
         return text
-    #如果是中日韩粤语等无需空格的语言
+    #If it is a language that does not require spaces such as Chinese, Japanese, Korean, Cantonese, etc.
     text_lilst=[]
     current_text=""
     offset=2 if language[:2] in ['zh','ja','ko','yue'] else 8
@@ -484,31 +479,31 @@ def simple_wrap(text,maxlen=15,language="en"):
     while i <_len:
         current_text=current_text.lstrip()
         if i>=_len-offset:
-            # 最后不足4个字符，无需区分都给最后一行
+            # If there are less than 4 characters at the end, all characters are given to the last line without distinction.
             current_text+=text[i:]
-            # print(f'最后不足4个字符')
+            # print(f'The last is less than 4 characters')
             break
         if len(current_text)<maxlen-offset:
             current_text+=text[i]
             i+=1
-            # print('正常追加')
+            # print('Normal append')
             continue
-        #判断 i+1,i+2,i+3,i+4 是否符合标点，
+        #Judge whether i+1,i+2,i+3,i+4 conform to punctuation,
         if maxlen-offset<=len(current_text)<=maxlen and text[i] in flag:
-            # 当前是标点，可以换行
+            # This is currently punctuation and can be wrapped.
             current_text+=text[i]
-            # print(f'在 maxlen-offset 和 maxlen 之间换行 {text[i]=}')
+            # print(f'Wrap between maxlen-offset and maxlen {text[i]=}')
             i+=1
             text_lilst.append(current_text)
             current_text=''
             continue
-        # 再判断后续4个是否符合换行条件
+        # Then determine whether the next four characters meet the line break conditions.
         raw_i=i
         for next_i in range(1,offset+1):
             if text[i+next_i] in flag:
                 pos_i=i+next_i+1
                 current_text+=text[i:pos_i]
-                # print(f'在后边+offset处换号{next_i=},{pos_i=},{text[i:pos_i]=}')
+                # print(f'Change number at +offset {next_i=},{pos_i=},{text[i:pos_i]=}')
                 raw_i=pos_i
 
                 text_lilst.append(current_text)
@@ -517,10 +512,10 @@ def simple_wrap(text,maxlen=15,language="en"):
         if raw_i!=i:
             i=raw_i
             continue
-        # 没有找到合适标点换行，强制换行
+        # No suitable punctuation line break found, forced line break
         current_text+=text[i]
         if len(current_text)>=maxlen:
-            # print(f'offset+4处也没找到合适的,强制该处断行,{len(current_text)=} {text[i]=}')
+            # print(f'offset+4 was not found suitable, forcing a line break there, {len(current_text)=} {text[i]=}')
             text_lilst.append(current_text)
             current_text=''
         i+=1
@@ -533,36 +528,22 @@ def simple_wrap(text,maxlen=15,language="en"):
     return ("\n".join(text_lilst)).strip()
 
 def textwrap(text, maxlen=15):
-    """
-    0. 如果text长度小于maxlen则直接返回。
-    1. text预先移除所有换行符。
-    2. 达到maxlen处，如果当前字符是标点，则在此分组。否则向后查找最多4个字符，
-       在找到的第一个标点处分组。如果都未找到，则在maxlen处硬分割。
-    3. 如果分组数大于1，且最后一组长度小于3，则将最后一组合并到前一组。
-    4. 最后将所有分组使用换行符连接后返回。
-
-    Args:
-      text: 需要处理的输入字符串。
-      maxlen: 每组的目标最大长度，默认为 15。
-
-    Returns:
-      处理过的、用换行符连接的字符串。
-    """
-    # 标点和空格列表
+    '0. If the text length is less than maxlen, it will be returned directly.\n    1. text removes all line breaks beforehand.\n    2. When maxlen is reached, if the current character is a punctuation mark, group it here. Otherwise, search up to 4 characters backward,\n       Group at the first punctuation found. If neither is found, hard split at maxlen.\n    3. If the number of groups is greater than 1 and the length of the last group is less than 3, merge the last group into the previous group.\n    4. Finally, all groups are connected using newline characters and returned.\n\n    Args:\n      text: The input string to be processed.\n      maxlen: The target maximum length of each group, default is 15.\n\n    Returns:\n      A processed, newline-concatenated string.'
+    # List of punctuation and spaces
     flag = [
         ",", ".", "?", "!", ";",
         "，", "。", "？", "；", "！", " "
     ]
 
-    # 1. 移除所有换行符
+    # 1. Remove all newlines
     text_string = text.strip() #replace('\n', ' ').replace('\r', ' ').strip()
 
-    # 0. 如果文本长度小于等于 maxlen，直接返回
+    # 0. If the text length is less than or equal to maxlen, return directly
     if len(text_string) <= maxlen:
         return text_string
 
     groups = []
-    # 保留原始换行
+    # Keep original newlines
     for text in re.split(r'\n|\\n',text_string):
         text=text.strip()
         if not text:
@@ -574,34 +555,34 @@ def textwrap(text, maxlen=15):
             continue
 
         while cursor < text_len:
-            # 如果剩余文本不足 maxlen，则全部作为最后一组
+            # If the remaining text is less than maxlen, all of them will be used as the last group.
             if text_len - cursor <= maxlen:
                 groups.append(text[cursor:])
                 break
 
-            # 2. 智能分组逻辑
+            # 2. Intelligent grouping logic
             break_point = -1
 
-            # 确定查找标点的范围，从 maxlen 位置开始，向后最多看4个字符
-            # 例如 maxlen=15, cursor=0, 则查找索引为 15, 16, 17 的字符
+            # Determine the range of searching for punctuation, starting from the maxlen position and looking back up to 4 characters
+            # For example, maxlen=15, cursor=0, then search for characters with indexes 15, 16, 17
             search_range = range(max(cursor + maxlen-3,0), min(cursor + maxlen + 2, text_len))
 
             found_flag = False
             for i in search_range:
                 if text[i] in flag:
-                    # 找到标点，断点设置为标点之后
+                    # Find the punctuation point and set the breakpoint after the punctuation point
                     break_point = i + 1
                     found_flag = True
                     break
 
-            # 如果在查找范围内没有找到标点，则在 maxlen 处硬分割
+            # If no punctuation is found within the search range, hard split at maxlen
             if not found_flag:
                 break_point = cursor + maxlen
 
             groups.append(text[cursor:break_point])
             cursor = break_point
 
-    # 3. 如果分组大于1，并且最后一组长度小于3，则合并
+    # 3. If the group is greater than 1 and the length of the last group is less than 3, merge
     if len(groups) > 1 and len(groups[-1]) < 3:
         groups[-2] += groups[-1]
         groups.pop()

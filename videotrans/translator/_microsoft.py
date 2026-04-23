@@ -43,7 +43,7 @@ class Microsoft(BaseTrans):
         headers['Authorization'] = f"Bearer {auth.text}"
         response = requests.post(url, json=[{"Text": "\n".join(data)}], headers=headers,
                                  verify=False, timeout=300)
-        logger.debug(f'[Mircosoft]返回:{response=}')
+        logger.debug(f'[Mircosoft]Return:{response=}')
         response.raise_for_status()
         re_result = response.json()
         if len(re_result) == 0 or len(re_result[0]['translations']) == 0:

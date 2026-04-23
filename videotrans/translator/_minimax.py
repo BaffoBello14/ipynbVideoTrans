@@ -61,7 +61,7 @@ class MiniMax(BaseTrans):
             max_tokens=int(params.get('minimax_max_tokens',8192))
         )
 
-        logger.debug(f'[minimax]响应:{response=}')
+        logger.debug(f'[minimax] response:{response=}')
         result = ""
         if not hasattr(response, 'choices'):
             raise RuntimeError(str(response))
@@ -70,7 +70,7 @@ class MiniMax(BaseTrans):
         if response.choices[0].message.content:
             result = response.choices[0].message.content.strip()
         else:
-            logger.warning(f'[minimax]请求失败:{response=}')
+            logger.warning(f'[minimax] Request failed:{response=}')
             raise# RuntimeError(f"[MiniMax] {response.choices[0].finish_reason}:{response}")
 
         match = re.search(r'<TRANSLATE_TEXT>(.*?)</TRANSLATE_TEXT>', result, re.S)

@@ -24,11 +24,9 @@ def extract_concise_error(stderr_text: str, max_lines=3, max_length=250) -> str:
         return " ".join(lines[-10:])
     return " ".join(result)
 
-# 简化函数移除硬件支持，避免复杂性和兼容性错误，仅在最终合并阶段支持硬件加速，在 trans_create.py 中单独实现
+# Simplify the function to remove hardware support to avoid complexity and compatibility errors. It only supports hardware acceleration in the final merge stage and is implemented separately in trans_create.py
 def runffmpeg(arg, *, noextname=None, uuid=None, force_cpu=True,cmd_dir=None):
-    """
-    执行 ffmpeg 命令
-    """
+    '\n    Execute ffmpeg command\n    '
     if settings.get('force_lib'):
         force_cpu=True
 
@@ -69,17 +67,17 @@ def runffmpeg(arg, *, noextname=None, uuid=None, force_cpu=True,cmd_dir=None):
             app_cfg.queue_novice[noextname] = "end"
         return True
     except FileNotFoundError as e:
-        logger.warning(f"命令未找到: {cmd[0]}。请确保 ffmpeg 已安装并在系统 PATH 中。")
+        logger.warning(f"Command not found:{cmd[0]}. Please make sure ffmpeg is installed and in your system PATH.")
         if noextname:
             app_cfg.queue_novice[noextname] = f"error:{e}"
         raise
     except subprocess.CalledProcessError as e:
         error_message = e.stderr or ""
-        logger.warning(f"FFmpeg 命令执行失败 (force_cpu={force_cpu})。\n命令: {' '.join(cmd)}\n错误: {error_message} {e.stdout}")
+        logger.warning(f"FFmpeg command execution failed (force_cpu={force_cpu}). \nCommand:{' '.join(cmd)}\nError:{error_message} {e.stdout}")
         err=extract_concise_error(e.stderr)
         if noextname:
             app_cfg.queue_novice[noextname] = f"error:{err}"
-        # 针对win上路径和名称问题单独提示
+        # Separate prompts for path and name issues on win
         if sys.platform=='win32' and 'No such file or directory' in str(e):
             _err=get_filepath_from_cmd(cmd)
             err=_err or err
@@ -87,10 +85,10 @@ def runffmpeg(arg, *, noextname=None, uuid=None, force_cpu=True,cmd_dir=None):
     except Exception as e:
         if noextname:
             app_cfg.queue_novice[noextname] = f"error:{e}"
-        logger.debug(f"执行 ffmpeg 时发生未知错误:{e}")
+        logger.debug(f"An unknown error occurred while executing ffmpeg:{e}")
         raise
 
-# 从 cmd 列表中获取 -i 之后的路径和 最后一个路径，以判断文件名是否规则，
+# Get the path after -i and the last path from the cmd list to determine whether the file name is regular.
 
 def get_filepath_from_cmd(cmd:list):
     file_list=[cmd[i+1] for i,param in enumerate(cmd) if param=='-i']
@@ -109,21 +107,9 @@ def check_hw_on_start(_compat=None):
     get_video_codec(265)
 
 def get_video_codec(compat=None) -> str:
-    """
-    通过测试确定最佳可用的硬件加速 H.264/H.265 编码器。
-
-    根据平台优先选择硬件编码器。如果硬件测试失败，则回退到软件编码。
-    结果会被缓存。此版本通过数据驱动设计和提前检查来优化结构和效率。
-
-    依赖 'config' 模块获取设置和路径。假设 'ffmpeg' 在系统 PATH 中，
-    测试输入文件存在，并且 TEMP_DIR 可写。
-
-
-    Returns:
-        str: 推荐的 ffmpeg 视频编码器名称 (例如 'h264_nvenc', 'libx264')。
-    """
+    "Test to determine the best available hardware-accelerated H.264/H.265 encoder.\n\n    Prefer hardware encoders based on platform. If the hardware test fails, fall back to software encoding.\n    Results will be cached. This release optimizes structure and efficiency through data-driven design and advance inspection.\n\n    Depends on 'config' module for settings and paths. Assuming 'ffmpeg' is in your system PATH,\n    The test input file exists and TEMP_DIR is writable.\n\n\n    Returns:\n        str: Recommended ffmpeg video encoder name (e.g. 'h264_nvenc', 'libx264')."
     import torch
-    _codec_cache = app_cfg.codec_cache  # 使用 config 中的缓存
+    _codec_cache = app_cfg.codec_cache  # Use cache in config
     try:
         if not _codec_cache and Path(f'{ROOT_DIR}/videotrans/codec.json').exists():
             _codec_cache=json.loads(Path(f'{ROOT_DIR}/videotrans/codec.json').read_text(encoding='utf-8'))
@@ -138,17 +124,17 @@ def get_video_codec(compat=None) -> str:
         try:
             video_codec_pref = int(settings.get('video_codec', 264))
         except (ValueError, TypeError):
-            logger.warning("配置中 'video_codec' 无效。将默认使用 H.264 (264)。")
+            logger.warning("'video_codec' in configuration is invalid. H.264 (264) will be used by default.")
             video_codec_pref = 264
 
     cache_key = f'{plat}-{video_codec_pref}'
     if cache_key in _codec_cache:
-        logger.debug(f"返回缓存的编解码器 {cache_key}: {_codec_cache[cache_key]}")
+        logger.debug(f"Return cached codecs{cache_key}: {_codec_cache[cache_key]}")
         return _codec_cache[cache_key]
 
     h_prefix, default_codec = ('hevc', 'libx265') if video_codec_pref == 265 else ('h264', 'libx264')
     if video_codec_pref not in [264, 265]:
-        logger.warning(f"未预期的 video_codec 值 '{video_codec_pref}'。将视为 H.264 处理。")
+        logger.warning(f"Unexpected video_codec value '{video_codec_pref}'. Treated as H.264.")
 
     ENCODER_PRIORITY = {
         'Darwin': ['videotoolbox'],
@@ -160,7 +146,7 @@ def get_video_codec(compat=None) -> str:
         test_input_file = Path(ROOT_DIR) / "videotrans/styles/no-remove.mp4"
         temp_dir = Path(TEMP_DIR)
     except Exception as e:
-        logger.warning(f"准备测试硬件编码器时出错: {e}。将使用软件编码 {default_codec}。")
+        logger.warning(f"An error occurred while preparing to test the hardware encoder:{e}. Will use software encoding{default_codec}。")
         _codec_cache[cache_key] = default_codec
         return default_codec
 
@@ -174,29 +160,29 @@ def get_video_codec(compat=None) -> str:
         ]
         creationflags = subprocess.CREATE_NO_WINDOW if sys.platform == 'win32' else 0
 
-        logger.debug(f"正在测试编码器是否可用: {encoder_to_test}...")
+        logger.debug(f"Testing whether the encoder is available:{encoder_to_test}...")
         success = False
         try:
             subprocess.run(
                 command, check=True, capture_output=True, text=True,
                 encoding='utf-8', errors='ignore', creationflags=creationflags, timeout=timeout
             )
-            logger.debug(f"硬件编码器 '{encoder_to_test}' 可用。")
+            logger.debug(f"hardware encoder '{encoder_to_test}' available.")
             success = True
         except FileNotFoundError:
-            logger.debug("'ffmpeg' 命令在 PATH 中未找到。无法进行编码器测试。")
-            raise  # 重新抛出异常，让上层逻辑捕获并终止测试
+            logger.debug("'ffmpeg' command not found in PATH. Encoder testing is not possible.")
+            raise  # Rethrow the exception and let the upper logic catch and terminate the test
         except subprocess.CalledProcessError as e:
-            logger.debug(f"硬件编码器 '{encoder_to_test}' 不可用")
+            logger.debug(f"hardware encoder '{encoder_to_test}' Not available")
             raise
         except PermissionError:
-            logger.debug(f"测试硬件编码器时失败:写入 {output_file} 时权限被拒绝。 {command=}")
+            logger.debug(f"Failed while testing hardware encoder: writing{output_file} Permission is denied. {command=}")
             raise
         except subprocess.TimeoutExpired:
-            logger.debug(f"硬件编码器 '{encoder_to_test}' 测试在 {timeout} 秒后超时。{command=}")
+            logger.debug(f"hardware encoder '{encoder_to_test}'Test in{timeout} Timeout after seconds.{command=}")
             raise
         except Exception as e:
-            logger.debug(f"测试硬件编码器 {encoder_to_test} 时发生意外错误: {e} {command=}")
+            logger.debug(f"Test hardware encoder{encoder_to_test} An unexpected error occurred:{e} {command=}")
             raise
         finally:
             try:
@@ -206,55 +192,53 @@ def get_video_codec(compat=None) -> str:
                 pass
             return success
 
-    selected_codec = default_codec  # 初始化为回退选项
+    selected_codec = default_codec  #Initialize as fallback option
 
     encoders_to_test = ENCODER_PRIORITY.get(plat, [])
     if not encoders_to_test:
-        logger.debug(f"不支持的平台: {plat}。将使用软件编码器 {default_codec}。")
+        logger.debug(f"Unsupported platforms:{plat}. Will use software encoder{default_codec}。")
     else:
-        logger.debug(f"平台: {plat}。正在按优先级检测最佳的 '{h_prefix}' 编码器: {encoders_to_test}")
+        logger.debug(f"Platform:{plat}. Detecting best ' by priority{h_prefix}'Encoder:{encoders_to_test}")
         try:
             for encoder_suffix in encoders_to_test:
                 if encoder_suffix == 'nvenc':
                     try:
                         if not torch.cuda.is_available():
-                            logger.debug("CUDA 不可用，跳过 nvenc 测试。")
-                            continue  # 跳过当前循环，测试下一个编码器
+                            logger.debug('CUDA is not available, skipping nvenc tests.')
+                            continue  # Skip the current loop and test the next encoder
                     except ImportError:
-                        logger.debug("未找到 torch 模块，将直接尝试 nvenc 测试。")
+                        logger.debug('The torch module is not found, the nvenc test will be tried directly.')
 
                 full_encoder_name = f"{h_prefix}_{encoder_suffix}"
                 if test_encoder_internal(full_encoder_name):
                     selected_codec = full_encoder_name
-                    logger.debug(f"已选择硬件编码器: {selected_codec}")
+                    logger.debug(f"Hardware encoder selected:{selected_codec}")
                     break
-            else:  # for-else 循环正常结束 (没有 break)
-                logger.debug(f"所有硬件加速器均未通过测试。将使用软件编码器: {selected_codec}")
+            else:  # for-else loop ends normally (no break)
+                logger.debug(f"All hardware accelerators failed the test. Will use software encoder:{selected_codec}")
 
             _codec_cache[cache_key] = selected_codec
-            # 保存缓存到本地
+            # Save cache locally
             Path(f"{ROOT_DIR}/videotrans/codec.json").write_text(json.dumps(_codec_cache))
         except Exception as e:
-            # 发生异常不缓存
-            logger.exception(f"在编码器测试期间发生意外，将使用软件编码: {e}", exc_info=True)
+            # Do not cache when an exception occurs
+            logger.exception(f"In the event of an incident during encoder testing, software encoding will be used:{e}", exc_info=True)
             selected_codec = default_codec
     # 
     _codec_cache[cache_key] = selected_codec
     
-    logger.debug(f"最终确定使用的编码器: {selected_codec}")
+    logger.debug(f"Finalized encoder to use:{selected_codec}")
     return selected_codec
 
 
 class _FFprobeInternalError(Exception):
-    """用于内部错误传递的自定义异常。"""
+    'Custom exception for internal error delivery.'
     pass
 
 
 def _run_ffprobe_internal(cmd: list[str]) -> str:
-    """
-    (内部函数) 执行 ffprobe 命令并返回其标准输出。
-    """
-    # 确保文件路径参数已转换为 POSIX 风格字符串，以获得更好的兼容性
+    '\n    (Internal function) Execute the ffprobe command and return its standard output.'
+    # Ensure file path parameters are converted to POSIX style strings for better compatibility
     if Path(cmd[-1]).is_file():
         cmd[-1] = Path(cmd[-1]).as_posix()
 
@@ -291,25 +275,23 @@ def runffprobe(cmd):
         if stdout_result:
             return stdout_result
 
-        # 如果 stdout 为空，但进程没有出错（不常见），则模拟旧的错误路径
-        #  _run_ffprobe_internal 中，如果 stderr 有内容且返回码非0，
-        # 会直接抛出异常，所以这段逻辑主要为了覆盖极端的边缘情况。
+        # If stdout is empty but the process did not error (uncommon), emulate the old error path
+        # In _run_ffprobe_internal, if stderr has content and the return code is non-0,
+        # will throw an exception directly, so this logic is mainly to cover extreme edge cases.
         logger.warning("ffprobe ran successfully but produced no output.")
         raise Exception("ffprobe ran successfully but produced no output.")
 
     except _FFprobeInternalError as e:
         raise
     except Exception as e:
-        # 捕获其他意料之外的错误并重新引发，保持行为一致
+        #Catch other unexpected errors and re-raise them to maintain consistent behavior
         logger.exception(e, exc_info=True)
         raise
 
 
 
 def get_video_info(mp4_file, *, video_fps=False, video_scale=False, video_time=False, get_codec=False):
-    """
-    获取视频信息。
-    """
+    '\n    Get video information.\n    '
 
 
     if not Path(mp4_file).exists():
@@ -346,8 +328,8 @@ def get_video_info(mp4_file, *, video_fps=False, video_scale=False, video_time=F
         "color": "yuv420p"
     }
     try:
-        # 以第一个流中duration为准，但可能某些格式，例如mkv第一个流中无duration字段或始终为0
-        result['time']=int(float(out['streams'][0]['duration'])*1000)#第一个流的长度为准
+        # The duration in the first stream shall prevail, but there may be some formats, such as mkv, there is no duration field in the first stream or it is always 0
+        result['time']=int(float(out['streams'][0]['duration'])*1000)#The length of the first stream shall prevail
         if result['time']<=0:
             result['time']=int(float(out['format']['duration'])*1000)
     except:
@@ -369,7 +351,7 @@ def get_video_info(mp4_file, *, video_fps=False, video_scale=False, video_time=F
         result['height'] = int(video_stream.get('height', 0))
         result['color'] = video_stream.get('pix_fmt', 'yuv420p').lower()
 
-        # FPS 计算逻辑
+        # FPS calculation logic
         def parse_fps(rate_str):
             try:
                 num, den = map(int, rate_str.split('/'))
@@ -389,7 +371,7 @@ def get_video_info(mp4_file, *, video_fps=False, video_scale=False, video_time=F
         result['video_fps'] = fps_avg if 1 <= fps_avg <= 120 else 30
         result['r_frame_rate'] = video_stream.get('r_frame_rate',result['video_fps'])
 
-    # 确保向后兼容
+    # Ensure backward compatibility
     if video_time:
         return result['time']
     if video_fps:
@@ -411,22 +393,22 @@ def _get_ms_from_media(file):
         elif ext in contants.AUDIO_EXITS:
             ms=int(float(runffprobe(['-v','error','-select_streams','a:0','-show_entries','stream=duration','-of','default=noprint_wrappers=1:nokey=1',file]))*1000)
     except Exception:
-        # mkv 等其他格式可能无法从流中读取 duration
+        # Other formats such as mkv may not be able to read duration from the stream
         pass
     if ms==0:
         ms=int(float(runffprobe(['-v','error','-show_entries','format=duration','-of','default=noprint_wrappers=1:nokey=1',file])))
     return ms
 
 
-# 获取无音频的视频流时长
+# Get the video stream duration without audio
 def get_video_ms_noaudio(mp4):
     return _get_ms_from_media(mp4)
 
 
-# 获取某个视频的时长 ms
+# Get the duration of a video in ms
 def get_video_duration(file_path):
     return _get_ms_from_media(file_path)
-# 获取音频时长 返回ms
+# Get the audio duration and return ms
 def get_audio_time(audio_file):
     return _get_ms_from_media(audio_file)
 
@@ -448,7 +430,7 @@ def conver_to_16k(audio, target_audio):
     ]
     return runffmpeg(cmd)
 
-# wav转为 m4a cuda + h264_cuvid
+# Convert wav to m4a cuda + h264_cuvid
 def wav2m4a(wavfile, m4afile, extra=None):
     cmd = [
         "-y",
@@ -467,19 +449,16 @@ def wav2m4a(wavfile, m4afile, extra=None):
 
 def create_concat_txt(filelist, concat_txt=None):
 
-    """
-    创建供FFmpeg concat使用的连接文件。
-    确保写入的是绝对路径，以避免FFmpeg因工作目录问题找不到文件。
-    """
+    '\n    Create a connection file for use by FFmpeg concat.\n    Make sure to write an absolute path to avoid FFmpeg not being able to find the file due to working directory problems.\n    '
     txt = []
     for it in filelist:
         path_obj = Path(it)
         if not path_obj.exists() or path_obj.stat().st_size == 0:
             continue
-        # 存放名字，避免片段过多在windows上出现命令行截断错误
+        # Store names to avoid command line truncation errors on Windows due to too many fragments.
         txt.append(f"file '{path_obj.name}'")
     if not txt:
-        # 如果没有有效文件，创建一个空的concat文件可能导致错误，不如直接抛出异常
+        # If there is no valid file, creating an empty concat file may cause errors. It is better to throw an exception directly.
         raise ValueError("Cannot create concat txt from an empty or invalid file list.")
 
     logger.debug(f'{concat_txt=},{filelist[0]=}')
@@ -488,7 +467,7 @@ def create_concat_txt(filelist, concat_txt=None):
     return concat_txt
 
 
-# 多个音频片段连接
+# Multiple audio clip connections
 def concat_multi_audio(*, out=None, concat_txt=None):
     if out:
         out = Path(out).as_posix()
@@ -503,56 +482,54 @@ def concat_multi_audio(*, out=None, concat_txt=None):
     return True
 
 
-# 目前仅用于 视频翻译后，延长背景音
+# Currently only used to extend the background sound after video translation
 def change_speed_rubberband(input_path,out_file, target_duration):
-    """
-    使用 Rubber Band 进行音频变速
-    """
+    '\n    Audio speed shifting using Rubber Band\n    '
     try:
         import pyrubberband as pyrb
     except Exception as e:
-        logger.warning('进行音频变速时失败，因为安装  rubberband 库')
+        logger.warning('Failed when doing audio speed shifting because rubberband library is installed')
         return
         
     import soundfile as sf
-    import numpy as np  # 新增 numpy 用于声道处理
+    import numpy as np  # Add numpy for channel processing
     try:
         y, sr = sf.read(input_path)
         if len(y) == 0:
-            logger.warning(f"[Audio-RB] 空音频文件: {input_path}")
+            logger.warning(f"[Audio-RB] Empty audio file:{input_path}")
             return
             
         current_duration = int((len(y) / sr) * 1000)
         
         if target_duration <= 0: target_duration = 1
         
-        # 【逻辑优化】如果目标时长比当前还长，说明需要音频慢放。
-        # 但在当前的对齐策略中，音频通常只压缩（加速）。
-        # 如果确实发生了 target > current，通常意味着我们应该填充静音而不是拉伸音频。
-        # 这里为了安全，如果差异过大，不做处理。
+        # [Logic Optimization] If the target duration is longer than the current time, it means that the audio needs to be slowed down.
+        # But in the current alignment strategy, audio is usually only compressed (accelerated).
+        # If target > current does occur, it usually means we should pad the silence instead of stretching the audio.
+        # For safety reasons, if the difference is too large, it will not be processed.
         #if target_duration > current_duration:
-        #     # 允许微小的误差，或者由后续静音填充处理
-        #     logger.debug(f"[Audio-RB] 目标时长({target_duration}) > 当前时长({current_duration})，跳过变速，交由静音填充。")
+        # # Allow small errors, or be handled by subsequent silent padding
+        # logger.debug(f"[Audio-RB] target duration ({target_duration}) > current duration ({current_duration}), skip speed change, fill in with silence.")
         #     return
 
         time_stretch_rate = current_duration / target_duration
         
-        # 限制范围
+        # Limit range
         time_stretch_rate = max(0.2, min(time_stretch_rate, 50.0))
         
-        logger.debug(f"[Audio-RB] {input_path} 原长:{current_duration}ms -> 目标:{target_duration}ms 倍率:{time_stretch_rate:.2f}")
+        logger.debug(f"[Audio-RB] {input_path} Original length:{current_duration}ms -> target:{target_duration}ms magnification:{time_stretch_rate:.2f}")
 
         y_stretched = pyrb.time_stretch(y, sr, time_stretch_rate)
         
-        # 【关键修正】确保输出是 Stereo (2通道)，防止后续 ffmpeg concat 报错
-        # 如果是单声道 (ndim=1)，复制为双声道
+        # [Key Correction] Make sure the output is Stereo (2 channels) to prevent subsequent ffmpeg concat errors.
+        # If it is mono (ndim=1), copy it to dual channel
         if y_stretched.ndim == 1:
             y_stretched = np.column_stack((y_stretched, y_stretched))
         
         sf.write(out_file, y_stretched, sr)
         
     except Exception as e:
-        logger.error(f"[Audio-RB] 音频处理失败 {input_path}: {e}")
+        logger.error(f"[Audio-RB] Audio processing failed{input_path}: {e}")
         return
 
 
@@ -567,21 +544,21 @@ def precise_speed_up_audio(*, file_path=None, out=None, target_duration_ms=None)
 
     current_duration_ms = len(audio)
 
-    # 完成使用 atempo 滤镜加速
-    # 构造 atempo 滤镜链
-    # atempo 限制：参数必须在 [0.5, 2.0] 之间
+    # Complete acceleration using atempo filter
+    # Construct atempo filter chain
+    # atempo restriction: parameters must be between [0.5, 2.0]
     atempo_list = []
     speed_factor = current_duration_ms / target_duration_ms
 
-    # 处理加速情况 (> 2.0)
+    # Handle acceleration situations (> 2.0)
     while speed_factor > 2.0:
         atempo_list.append("atempo=2.0")
         speed_factor /= 2.0
 
-    # 放入剩余的倍率
+    #Put in the remaining magnification
     atempo_list.append(f"atempo={speed_factor}")
 
-    # 用逗号连接滤镜，形成串联效果，如 "atempo=2.0,atempo=1.5"
+    # Use commas to connect filters to form a series effect, such as "atempo=2.0,atempo=1.5"
     filter_str = ",".join(atempo_list)
     rubberband_filter_str = f"rubberband=tempo={current_duration_ms / target_duration_ms}"
     if not out:
@@ -594,7 +571,7 @@ def precise_speed_up_audio(*, file_path=None, out=None, target_duration_ms=None)
         file_path,
         '-filter:a',
         rubberband_filter_str,
-        '-t', f"{target_duration_ms/1000.0}",  # 强制裁剪到目标时长，防止精度误差
+        '-t', f"{target_duration_ms/1000.0}",  # Force cutting to the target duration to prevent accuracy errors
         '-ar', "48000",
         '-ac', "2",
         '-c:a', codecs.get(out_ext,'pcm_s16le'),
@@ -607,7 +584,7 @@ def precise_speed_up_audio(*, file_path=None, out=None, target_duration_ms=None)
         runffmpeg(cmd, force_cpu=True)
 
 
-# 从音频中截取一个片段
+# Extract a segment from the audio
 def cut_from_audio(*, ss, to, audio_file, out_file):
     from . import help_srt
     from pathlib import Path
@@ -658,13 +635,13 @@ def remove_silence_wav(audio_file):
     
     audio = AudioSegment.from_file(audio_file, format="wav")    
     
-    # TTS的静音通常非常干净 如果背景仍有细微底噪，可调高
+    # The mute of TTS is usually very clean. If there is still slight noise in the background, you can turn it up.
     silence_threshold = -40
     
-    # 只要静音持续 50ms 以上就检测出来 
+    # As long as the silence lasts for more than 50ms, it will be detected
     min_silence_len = 50
 
-    # 3. 检测非静音片段
+    # 3. Detect non-silent segments
     nonsilent_chunks = detect_nonsilent(
         audio,
         min_silence_len=min_silence_len,
@@ -672,30 +649,30 @@ def remove_silence_wav(audio_file):
         seek_step=1
     )
 
-    # 4. 处理剪切逻辑
+    # 4. Process cutting logic
     if len(nonsilent_chunks) > 0:
-        # 在检测到的非静音首尾，额外保留 100 毫秒的声音，防止吞掉弱辅音或尾音
-        head_padding_ms = 80   # 头部保留80毫秒
-        tail_padding_ms = 180  # 尾音通常拖得比较长，保留180毫秒
+        # At the beginning and end of the detected non-silent sound, retain an additional 100 milliseconds of sound to prevent weak consonants or codas from being swallowed
+        head_padding_ms = 80   # Header retained for 80 milliseconds
+        tail_padding_ms = 180  # The tail sound is usually dragged out longer and is kept for 180 milliseconds.
         
-        # 获取第一个非静音块的开始时间
+        # Get the start time of the first non-silent block
         raw_start = nonsilent_chunks[0][0]
-        # 获取最后一个非静音块的结束时间
+        # Get the end time of the last non-silent block
         raw_end = nonsilent_chunks[-1][1]
         
-        # 计算最终裁剪位置，使用 max 和 min 防止索引超出音频总长度
+        # Calculate the final cropping position, use max and min to prevent the index from exceeding the total length of the audio
         start_trim = max(0, raw_start - head_padding_ms)
         end_trim = min(len(audio), raw_end + tail_padding_ms)
         
-        # 裁剪音频
+        # Trim audio
         trimmed_audio = audio[start_trim:end_trim]
         trimmed_audio.export(audio_file, format="wav")
         return True
     
-    return False # 如果全是静音，返回False
+    return False # If all is mute, return False
 
 
-# input_file_path 可能是字符串：文件路径，也可能是音频数据
+# input_file_path may be a string: file path, or audio data
 def remove_silence_from_end(input_file_path,is_start=True):
     from pydub import AudioSegment
     from pydub.silence import detect_nonsilent
@@ -707,7 +684,7 @@ def remove_silence_from_end(input_file_path,is_start=True):
         if format in ['wav', 'mp3', 'm4a']:
             audio = AudioSegment.from_file(input_file_path, format=format if format in ['wav', 'mp3'] else 'mp4')
         else:
-            # 转为mp3
+            #Convert to mp3
             try:
                 runffmpeg(['-y', '-i', input_file_path, input_file_path + ".mp3"])
                 audio = AudioSegment.from_file(input_file_path + ".mp3", format="mp3")
@@ -749,55 +726,50 @@ def remove_silence_from_end(input_file_path,is_start=True):
 def format_video(name, target_dir=None):
     from . import help_misc
     raw_pathlib = Path(name)
-    # 原始基本名字,例如 `1.mp4`
+    # Original base name, for example `1.mp4`
     raw_basename = raw_pathlib.name
-    # 无后缀的基本名字，例如 `1`
+    # Base name without suffix, for example `1`
     raw_noextname = raw_pathlib.stem
-    # 后缀，如 `.mp4`
+    # Suffix, such as `.mp4`
     ext = raw_pathlib.suffix.lower()[1:]
-    # 所在目录
+    # directory
     raw_dirname = raw_pathlib.parent.resolve().as_posix()
 
     obj = {
-        # 原始文件名含完整路径，如 F:/python/1.mp4
+        # The original file name includes the full path, such as F:/python/1.mp4
         "name": name,
-        # 原始所在目录 如 F:/python
+        # Original directory such as F:/python
         "dirname": raw_dirname,
-        # 基本名带后缀 如 1.mp4
+        # Basic name with suffix such as 1.mp4
         "basename": raw_basename,
-        # 基本名不带后缀,如 1
+        #Basic name without suffix, such as 1
         "noextname": raw_noextname,
-        # 扩展名去掉点.  如 mp4
+        # Remove the dot from the extension. Such as mp4
         "ext": ext
-        # 最终存放目标位置，直接存到这里
+        #Final storage target location, save directly here
     }
 
-    # 如果存在目标文件夹，则在其之下生成 以无后缀的基本名的子文件夹
+    # If the target folder exists, generate a subfolder under it with the base name without suffix
     if target_dir:
         obj['target_dir'] = Path(f'{target_dir}/{raw_noextname}-{ext}').as_posix()
-    # 唯一id标识 改为使用 名字和尺寸，以便使用缓存 例如降噪前判断是否已存在
+    # Unique ID identifier Use name and size instead to use cache, for example, determine whether it already exists before noise reduction
     obj['uuid'] = help_misc.get_md5(f'{name}-{time.time()}')[:10]
     return obj
 
 
-# 导出可能较大的 wav 文件时，使用该函数，避免 大于4G 的音频出错
+# When exporting a wav file that may be larger, use this function to avoid audio errors larger than 4G.
 def large_wav_export_with_soundfile(audio_segment, output_path: str):
     import numpy as np
     import soundfile as sf
 
     # audio_segment = AudioSegment.from_file(...)
-    """
-    使用 soundfile 模块导出 pydub 的 AudioSegment 对象，以支持大文件。
-    
-    :param audio_segment: pydub 的音频对象
-    :param output_path: 输出的 .wav 文件路径
-    """
+    "Export pydub's AudioSegment object using the soundfile module to support large files.\n    \n    :param audio_segment: audio object of pydub\n    :param output_path: output .wav file path"
 
-    # 1. 从 pydub 获取原始 PCM 数据（bytes）
+    # 1. Get original PCM data (bytes) from pydub
     raw_data = audio_segment.raw_data
 
-    # 2. 将原始数据转换为 NumPy 数组，这是 soundfile 的标准输入格式
-    #    需要确定正确的数据类型 (dtype)
+    # 2. Convert the original data to a NumPy array, which is the standard input format of soundfile
+    # Need to determine the correct data type (dtype)
     sample_width = audio_segment.sample_width
     if sample_width == 1:
         dtype = np.int8  # 8-bit PCM
@@ -806,21 +778,21 @@ def large_wav_export_with_soundfile(audio_segment, output_path: str):
     elif sample_width == 4:
         dtype = np.int32  # 32-bit PCM
     else:
-        raise ValueError(f"不支持的采样位宽: {sample_width}")
+        raise ValueError(f"Unsupported sample bit widths:{sample_width}")
 
-    # frombuffer 从字节串创建数组，'C' 表示按C语言顺序
+    # frombuffer creates an array from a byte string, 'C' means in C language order
     numpy_array = np.frombuffer(raw_data, dtype=dtype)
 
-    # 3. 如果是多声道，需要将一维数组重塑为 (n_frames, n_channels)
+    # 3. If it is multi-channel, the one-dimensional array needs to be reshaped into (n_frames, n_channels)
     num_channels = audio_segment.channels
     if num_channels > 1:
         numpy_array = numpy_array.reshape((-1, num_channels))
 
-    # 4. 使用 soundfile 写入文件
-    #    soundfile 会自动处理文件大小，在需要时切换到 RF64
+    # 4. Use soundfile to write to a file
+    # soundfile will automatically handle the file size, switching to RF64 when needed
     sf.write(
         output_path,
         numpy_array,
         audio_segment.frame_rate,
-        subtype='PCM_16' if sample_width == 2 else ('PCM_24' if sample_width == 3 else 'PCM_32')  # 根据需要选择子类型
+        subtype='PCM_16' if sample_width == 2 else ('PCM_24' if sample_width == 3 else 'PCM_32')  #Select subtypes as needed
     )

@@ -54,7 +54,7 @@ class HuoShan(BaseTrans):
         except Exception as e:            
             raise RuntimeError(e.message) if hasattr(e,'message') else e
         else:
-            logger.debug(f'[字节火山引擎]响应:{response=}')
+            logger.debug(f'[Byte Volcano Engine] response:{response=}')
             result = ""
             if not response or response.error:
                 raise RuntimeError(response.error)
@@ -63,7 +63,7 @@ class HuoShan(BaseTrans):
             try:
                 result = response.output[-1].content[0].text.strip()
             except Exception as e:
-                logger.exception(f'[火山引擎]{e}',exc_info=True)
+                logger.exception(f'[Volcano Engine]{e}',exc_info=True)
                 raise RuntimeError(str(response.output))
 
             match = re.search(r'<TRANSLATE_TEXT>(.*?)</TRANSLATE_TEXT>',

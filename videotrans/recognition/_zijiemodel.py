@@ -1,4 +1,4 @@
-# zh_recogn 识别
+# zh_recognition recognition
 import json
 import uuid
 from dataclasses import dataclass
@@ -11,16 +11,16 @@ from videotrans.recognition._base import BaseRecogn
 from videotrans.util import tools
 
 _error={
-"20000003":"静音音频",
+"20000003":'mute audio',
 
 
 
-"45000001":"请求参数缺失必需字段 / 字段值无效",
-"45000002":"空音频",
-"45000151":"音频格式不正确",
+"45000001":'The request parameter is missing a required field/the field value is invalid',
+"45000002":'Empty audio',
+"45000151":'Audio format is incorrect',
 
-"550XXXX":"服务内部处理错误",
-"55000031":"服务器繁忙"
+"550XXXX":'Service internal handling error',
+"55000031":'Server is busy'
 }
 
 @dataclass
@@ -67,14 +67,14 @@ class ZijieRecogn(BaseRecogn):
         response.raise_for_status()
         code = response.headers.get('X-Api-Status-Code')
         if not code:
-            raise RuntimeError(f"未知错误:{response=},{response.headers=}")
+            raise RuntimeError(f"Unknown error:{response=},{response.headers=}")
         if str(code) != "20000000":
-            raise RuntimeError(_error.get(str(code),'未知错误'))
+            raise RuntimeError(_error.get(str(code),'unknown error'))
 
         res = response.json()
         seg_list = res.get('result', {}).get('utterances')
         if not seg_list:
-            raise RuntimeError(f'返回数据中无识别结果:{response=}')
+            raise RuntimeError(f'There is no recognition result in the returned data:{response=}')
 
         srt_list = []
         speaker_list=[]

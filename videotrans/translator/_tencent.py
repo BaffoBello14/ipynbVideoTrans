@@ -36,7 +36,7 @@ class Tencent(BaseTrans):
     def __post_init__(self):
         super().__post_init__()
         self.aisendsrt = False
-        # 腾讯禁止国外ip
+        # Tencent bans foreign IP addresses
         os.environ["NO_PROXY"]="tmt.tencentcloudapi.com"
 
 
@@ -47,14 +47,14 @@ class Tencent(BaseTrans):
         if self._exit(): return
         cred = credential.Credential(params.get('tencent_SecretId', '').strip(),
                                      params.get('tencent_SecretKey',''))
-        # 实例化一个http选项，可选的，没有特殊需求可以跳过
+        # Instantiate an http option, optional, can be skipped if there are no special requirements
         httpProfile = HttpProfile(proxy="")
         httpProfile.endpoint = "tmt.tencentcloudapi.com"
 
-        # 实例化一个client选项，可选的，没有特殊需求可以跳过
+        # Instantiate a client option, optional, can be skipped if there are no special requirements
         clientProfile = ClientProfile()
         clientProfile.httpProfile = httpProfile
-        # 实例化要请求产品的client对象,clientProfile是可选的
+        # Instantiate the client object to request the product, clientProfile is optional
         client = tmt_client.TmtClient(cred, "ap-beijing", clientProfile)
 
         reqdata = {
@@ -70,5 +70,5 @@ class Tencent(BaseTrans):
 
         req.from_json_string(json.dumps(reqdata))
         resp = client.TextTranslate(req)
-        logger.debug(f'[腾讯]返回:{resp=}')
+        logger.debug(f'[Tencent] Return:{resp=}')
         return resp.TargetText.strip()

@@ -46,7 +46,7 @@ class ZhipuAI(BaseTrans):
             max_tokens=int(params.get('zhipu_max_token',4095))
         )
 
-        logger.debug(f'[zhipuai]响应:{response=}')
+        logger.debug(f'[zhipuai]Response:{response=}')
         if not hasattr(response,'choices'):
             raise RuntimeError(str(response))
         result = ""
@@ -55,7 +55,7 @@ class ZhipuAI(BaseTrans):
         if  response.choices[0].message.content:
             result = response.choices[0].message.content.strip()
         else:
-            logger.warning(f'[zhipuai]请求失败:{response=}')
+            logger.warning(f'[zhipuai]Request failed:{response=}')
             raise RuntimeError(f"[ZhipuAI] {response.choices[0].finish_reason}:{response}")
 
         match = re.search(r'<TRANSLATE_TEXT>(.*?)</TRANSLATE_TEXT>', result, re.S)

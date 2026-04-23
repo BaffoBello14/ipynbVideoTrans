@@ -17,19 +17,20 @@ RETRY_DELAY = 5
 @dataclass
 class DoubaoTTS(BaseTTS):
     error_status: ClassVar[Dict[str, str]] = {
-        "3001": "无效的请求,若是正式版，可能当前所用音色需要单独从字节火山购买",
-        "3003": "并发超限",
-        "3005": "后端服务器负载高",
-        "3006": "服务中断",
-        "3010": "文本长度超限",
-        "3011": "参数有误或者文本为空、文本与语种不匹配、文本只含标点",
-        "3030": "单次请求超过服务最长时间限制",
-        "3031": "后端出现异常",
-        "3032": "等待获取音频超时",
-        "3040": "音色克隆链路网络异常",
-        "3050": "音色克隆音色查询失败"
+        "3001": 'Invalid request. If it is the official version, the sound currently used may need to be purchased separately from Byte Huoshan.',
+        "3003": 'Concurrency exceeded',
+        "3005": 'Backend server load is high',
+        "3006": 'service interruption',
+        "3010": 'Text length exceeded',
+        "3011": 'The parameters are incorrect or the text is empty, the text does not match the language, or the text only contains punctuation.',
+        "3030": 'A single request exceeds the maximum service time limit',
+        "3031": 'An exception occurred in the backend',
+        "3032": 'Timeout waiting to get audio',
+        "3040": 'Tone clone link network abnormality',
+        "3050": 'Sound clone sound query failed'
     }
 
+    # Keys are the first two characters of dialect role names in the Doubao UI.
     fangyan: ClassVar[Dict[str, str]] = {
         "东北": "zh_dongbei",
         "粤语": "zh_yueyu",
@@ -37,7 +38,7 @@ class DoubaoTTS(BaseTTS):
         "西安": "zh_xian",
         "成都": "zh_chengdu",
         "台湾": "zh_taipu",
-        "广西": "zh_guangxi"
+        "广西": "zh_guangxi",
     }
     voice_type: Optional[str] = field(init=False, default=None)
 
@@ -46,7 +47,7 @@ class DoubaoTTS(BaseTTS):
         self.stop_next_all=False
 
     def _exec(self):
-        # 并发限制为1，防止限流
+        # The concurrency limit is 1 to prevent current limiting
         self._local_mul_thread()
 
     def _item_task(self, data_item: dict = None,idx:int=-1):
@@ -67,7 +68,7 @@ class DoubaoTTS(BaseTTS):
             if self.volume:
                 volume += float(self.volume.replace('%', '')) / 100
 
-            # 角色为实际名字
+            #The role is the actual name
             role = data_item['role']
             langcode = self.language[:2].lower()
             if not self.voice_type:
@@ -107,7 +108,7 @@ class DoubaoTTS(BaseTTS):
 
                 }
             }
-            logger.debug(f'字节语音合成:{request_json=}')
+            logger.debug(f'Byte speech synthesis:{request_json=}')
             resp = requests.post(api_url, json.dumps(request_json), headers=header,verify=False)
             resp.raise_for_status()
             resp_json = resp.json()
@@ -122,7 +123,7 @@ class DoubaoTTS(BaseTTS):
                 self.stop_next_all=True
                 raise RuntimeError(resp_json.get('message'))
             if 'code' in resp_json:
-                logger.debug(f'字节火山语音合成失败:{resp_json=}')
+                logger.debug(f'Byte Volcano speech synthesis failed:{resp_json=}')
             raise RuntimeError(self.error_status.get(str(resp_json['code']), resp_json['message']))
 
         try:

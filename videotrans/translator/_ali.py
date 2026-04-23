@@ -33,16 +33,12 @@ class Ali(BaseTrans):
 
 
     def create_client(self) -> alimt20181012Client:
-        """
-        使用AK&SK初始化账号Client
-        @return: Client
-        @throws Exception
-        """
+        '\n        Use AK&SK to initialize account Client\n        @return: Client\n        @throwsException\n        '
         cf = open_api_models.Config(
             access_key_id=params.get('ali_id',''),
             access_key_secret=params.get('ali_key','')
         )
-        # Endpoint 请参考 https://api.aliyun.com/product/alimt
+        # Endpoint please refer to https://api.aliyun.com/product/alimt
         cf.endpoint = f'mt.cn-hangzhou.aliyuncs.com'
         return alimt20181012Client(cf)
 

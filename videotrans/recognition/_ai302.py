@@ -1,4 +1,4 @@
-# zh_recogn 识别
+# zh_recognition recognition
 import json
 import logging
 from dataclasses import dataclass
@@ -32,13 +32,13 @@ class AI302Recogn(BaseRecogn):
         model_name = params.get('ai302_model_recogn','whisper-1')
         print(f'{model_name=}')
         if model_name=='gpt-4o-transcribe-diarize':
-            # 说话人识别模型
+            # Speaker recognition model
             return self._diarize()
         if model_name.startswith('gpt-4o-'):
-            # gpt-4o 只可返回json格式
+            # gpt-4o can only return json format
             return self._thrid_api()
         
-        # 转为 mp3
+        # Convert to mp3
 
         apikey = params.get('ai302_key')
         langcode = self.detect_language[:2].lower()
@@ -82,7 +82,7 @@ class AI302Recogn(BaseRecogn):
         return self.raws
 
     def _thrid_api(self):
-        # 发送请求
+        # Send request
         model_name = params.get('ai302_model_recogn','whisper-1')
         raws = self.cut_audio()
         apikey = params.get('ai302_key')

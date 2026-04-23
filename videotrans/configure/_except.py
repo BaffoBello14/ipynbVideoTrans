@@ -43,7 +43,7 @@ except ImportError:
     TenRetryError = Exception
 
 
-# 内部已整理好错误提示消息的异常，将ex=None,message='{错误消息}'
+# The exceptions with error message have been sorted out internally, set ex=None, message='{error message}'
 class VideoTransError(Exception):
     def __init__(self, message=''):
         super().__init__(message)
@@ -72,33 +72,33 @@ class StopRetry(VideoTransError):
 
 
 
-# 无需继续重试的异常
+# No need to continue retrying exceptions
 NO_RETRY_EXCEPT = (
-    TooManyRedirects,  # 重定向次数过多
-    MissingSchema,  # URL 缺少协议 (如 "http://")
-    InvalidSchema,  # URL 协议无效
-    InvalidURL,  # URL 格式无效
-    SSLError,  # SSL 证书验证失败
+    TooManyRedirects,  # Too many redirects
+    MissingSchema,  # URL is missing protocol (such as "http://")
+    InvalidSchema,  # URL protocol is invalid
+    InvalidURL,  # URL format is invalid
+    SSLError,  # SSL certificate verification failed
 
-    # 连接问题，检查网络或尝试设置代理
+    # Connection problem, check the network or try to set up a proxy
     RetryError,
     ReqConnectionError,
     ConnectionError,
-    ConnectionRefusedError,  # 连接被拒绝
-    ConnectionResetError,  # 连接被重置
+    ConnectionRefusedError,  # Connection refused
+    ConnectionResetError,  # The connection is reset
     ConnectionAbortedError,  #
 
     httpx.ConnectError,
     httpx.ReadError,
 
-    # 代理错误
+    # proxy error
     ProxyError,
 
-    # openai 库的永久性错误 (通常是 4xx 状态码)
-    AuthenticationError,  # 401 认证失败 (API Key 错误)
-    PermissionDeniedError,  # 403 无权限访问该模型
-    NotFoundError,  # 404 找不到资源 (例如模型名称错误)
-    BadRequestError,  # 400 错误请求 (例如输入内容过长、参数无效等)
+    # Permanent errors for the openai library (usually 4xx status codes)
+    AuthenticationError,  # 401 Authentication failed (API Key error)
+    PermissionDeniedError,  # 403 No permission to access the model
+    NotFoundError,  # 404 Resource not found (e.g. wrong model name)
+    BadRequestError,  # 400 Error request (for example, input content is too long, parameters are invalid, etc.)
 
     LengthFinishReasonError,
     RateLimitError,
@@ -107,7 +107,7 @@ NO_RETRY_EXCEPT = (
     StopRetry
 )
 
-"""检查错误信息中是否包含本地地址"""
+'Check if the error message contains a local address'
 
 
 def _is_local_address(url_or_message):
@@ -120,13 +120,13 @@ def _is_local_address(url_or_message):
     return any(indicator in text for indicator in local_indicators)
 
 
-"""尝试从错误信息中提取API地址"""
+'Try to extract the API address from the error message'
 
 
 def _extract_api_url_from_error(error):
     error_str = str(error)
 
-    # 查找URL模式
+    # Find URL pattern
     url_patterns = [
         r'https?://[^\s\'"]+',
         r'www\.[^\s\'"]+\.[a-z]{2,}',
@@ -141,11 +141,11 @@ def _extract_api_url_from_error(error):
     return None
 
 
-"""处理连接错误的详细信息"""
+'Details of handling connection errors'
 def _handle_connection_error_detail(error, lang):
     error_str = str(error).lower()
 
-    # 检查是否为本地地址
+    # Check if it is a local address
     is_local = _is_local_address(error_str)
     api_url = _extract_api_url_from_error(error)
 
@@ -153,72 +153,72 @@ def _handle_connection_error_detail(error, lang):
 
     if "dns" in error_str or "name or service not known" in error_str:
         base_message = (
-            "域名解析失败，无法找到服务器地址" if lang == 'zh'
+            'Domain name resolution failed and the server address cannot be found.' if lang == 'zh'
             else "Domain name resolution failed, cannot find server address"
         )
     elif "ProxyError" in error_str:
         base_message = (
-            "代理设置不正确或代理不可用，请检查代理或关闭代理并删掉代理文本框中所填内容" if lang == 'zh'
+            'The proxy settings are incorrect or the proxy is unavailable. Please check the proxy or close the proxy and delete the content in the proxy text box.' if lang == 'zh'
             else "The proxy address is not available, please check"
         )
 
-    elif "refused" in error_str or "10061" in error_str or "积极拒绝" in error_str:
+    elif "refused" in error_str or "10061" in error_str or 'Actively refuse' in error_str:
         if is_local:
             base_message = (
-                "连接被拒绝，请确保本地服务已启动并正在运行" if lang == 'zh'
+                'Connection refused, please ensure the local service is up and running' if lang == 'zh'
                 else "Connection refused, please ensure the local service is started and running"
             )
         else:
             base_message = (
-                "连接被拒绝，目标服务可能未运行或端口错误" if lang == 'zh'
+                'Connection refused, the target service may not be running or the port is wrong' if lang == 'zh'
                 else "Connection refused, target service may not be running or wrong port"
             )
     elif "reset" in error_str:
         base_message = (
-            "连接被重置，网络可能不稳定" if lang == 'zh'
+            'The connection was reset and the network may be unstable' if lang == 'zh'
             else "Connection reset, network may be unstable"
         )
     elif "timeout" in error_str or "timed out" in error_str:
         base_message = (
-            "连接超时，请检查网络连接是否稳定" if lang == 'zh'
+            'The connection timed out, please check whether the network connection is stable.' if lang == 'zh'
             else "Connection timeout, please check network stability"
         )
     elif "max retries exceeded" in error_str:
         if is_local:
             if "0.0.0.0" in error_str:
                 base_message = (
-                    "API 地址不可是 0.0.0.0 ，请修改为 127.0.0.1 " if lang == 'zh'
+                    'The API address cannot be 0.0.0.0, please change it to 127.0.0.1' if lang == 'zh'
                     else "The API address cannot be 0.0.0.0, please change it to 127.0.0.1"
                 )
             else:
                 base_message = (
-                    "多次重试连接失败，请确保本地服务已正确启动" if lang == 'zh'
+                    'Multiple retries of connection failed, please make sure the local service has been started correctly' if lang == 'zh'
                     else "Multiple connection retries failed, please ensure local service is properly started"
                 )
         else:
             base_message = (
-                "多次重试连接失败，服务可能暂时不可用" if lang == 'zh'
+                'Multiple attempts to connect failed and the service may be temporarily unavailable' if lang == 'zh'
                 else "Multiple connection retries failed, service may be temporarily unavailable"
             )
 
     else:
         base_message = (
-            "网络连接失败" if lang == 'zh'
+            'Network connection failed' if lang == 'zh'
             else "Network connection failed"
         )
 
-    # 为中文用户添加额外提示
+    # Add additional prompts for Chinese users
     if lang == 'zh' and api_url and not is_local:
         if "api.msedgeservices.com" in api_url.lower():
-            base_message += ". EdgeTTS使用频繁可能触发限流，请稍等段时间重试。"
+            base_message += '. Frequent use of EdgeTTS may trigger current limiting, please wait for a while and try again.'
             return base_message
         if "edge.microsoft.com" in api_url.lower():
-            base_message += ". 微软翻译使用频繁可能触发限流，请稍等段时间重试。"
+            base_message += '. Frequent use of Microsoft Translator may trigger current limiting, please wait for a while and try again.'
             return base_message
-        # 检查是否为国外知名API服务
+        # Check whether it serves a well-known foreign API
         foreign_apis = ['openai', 'anthropic', 'claude', 'elevenlabs', 'deepgram', 'google', 'aws.amazon']
         if any(api in api_url.lower() for api in foreign_apis):
-            base_message += "。注意：某些国外服务需要科学上网才能访问"
+            base_message += '. Note: Some foreign services require scientific Internet access in order to access them'
 
     return base_message
 
@@ -226,7 +226,7 @@ def _handle_connection_error_detail(error, lang):
 
 
 
-# 根据异常类型，返回整理后的可读性错误消息
+# According to the exception type, return the organized readable error message
 def get_msg_from_except(ex):
     if isinstance(ex, VideoTransError):
         return str(ex)
@@ -238,49 +238,49 @@ def get_msg_from_except(ex):
         except AttributeError:
             pass
 
-    # 异常处理映射
+    #Exception handling mapping
     exception_handlers = {
-        # === 认证和权限问题 ===
+        # === Authentication and permission issues ===
         AuthenticationError: lambda e: (
-            f"API密钥错误，请检查密钥是否正确 {e.body.get('message')}" if lang == 'zh'
+            f"API key error, please check if the key is correct{e.body.get('message')}" if lang == 'zh'
             else  e.body.get('message')
         ),
 
         PermissionDeniedError: lambda e: (
-            f"当前密钥没有访问权限，请检查权限设置 {e.body.get('message')}" if lang == 'zh'
+            f"The current key does not have access permissions, please check the permission settings{e.body.get('message')}" if lang == 'zh'
             else  e.message
         ),
 
-        # === 频率限制 ===
+        # === Frequency limit ===
         RateLimitError: lambda e: (
-            f"请求过于频繁或余额不足：{e.body.get('message')}" if lang == 'zh'
+            f"Too frequent requests or insufficient balance:{e.body.get('message')}" if lang == 'zh'
             else e.body.get('message')
         ),
-        # === 资源不存在问题 ===
-        # === 请求参数问题 ===
-        # === 服务端问题 ===
+        # === There is no problem with the resource ===
+        # === Request parameter problem ===
+        # === Server issues ===
         (InternalServerError,NotFoundError,BadRequestError,APIConnectionError,APIError): lambda e: e.body.get('message') if hasattr(e,'body') and hasattr(e.body,'get') else str(e),
 
 
         LengthFinishReasonError: lambda e: (
-            f'内容太长超出最大允许Token，请减小内容或增大max_token,或者降低每次发送字幕行数\n{e}' if lang == 'zh' else f'{e}'),
+            f'The content is too long and exceeds the maximum allowed token. Please reduce the content or increase max_token, or reduce the number of subtitle lines sent each time\n{e}' if lang == 'zh' else f'{e}'),
         ContentFilterFinishReasonError: lambda
-            e: f"内容触发AI风控被过滤 {e}" if lang == 'zh' else f'Content triggers AI risk control and is filtered\n{e}',
+            e: f"Content triggers AI risk control and is filtered{e}" if lang == 'zh' else f'Content triggers AI risk control and is filtered\n{e}',
 
 
 
-        # === 配置和地址问题 ===
+        # === Configuration and address issues ===
         (TooManyRedirects, MissingSchema, InvalidSchema, InvalidURL): lambda e: (
-            f"请求地址格式不正确，请检查配置 {e.message}" if lang == 'zh'
+            f"The request address format is incorrect, please check the configuration{e.message}" if lang == 'zh'
             else f"Request URL format is incorrect, check configuration {e.message}"
         ),
 
         (ProxyError, aiohttp.client_exceptions.ClientProxyConnectionError): lambda e: (
-            "代理设置不正确或代理不可用，请检查代理或关闭代理并删掉代理文本框中所填内容" if lang == 'zh'
+            'The proxy settings are incorrect or the proxy is unavailable. Please check the proxy or close the proxy and delete the content in the proxy text box.' if lang == 'zh'
             else "Proxy configuration issue, check settings or disable proxy"
         ),
         SSLError: lambda e: (
-            "安全连接失败，请检查系统时间或网络设置，如果使用了代理，请关闭后重试" if lang == 'zh'
+            'The secure connection failed. Please check the system time or network settings. If a proxy is used, please close it and try again.' if lang == 'zh'
             else "Secure connection failed, check system time or network settings"
         ),
 
@@ -291,10 +291,10 @@ def get_msg_from_except(ex):
         HTTPError: lambda e: f'{e}',
 
         RetryError: lambda e: (
-            "重试多次后仍然失败，请检查网络连接或服务状态" if lang == 'zh'
+            'Still failed after retrying multiple times, please check the network connection or service status' if lang == 'zh'
             else "Failed after multiple retries, check network connection or service status"
         ),
-        # === 网络连接问题 ===
+        # === Network connection problem ===
         (httpcore.ConnectTimeout, httpx.ConnectTimeout, httpx.ConnectError, httpx.ReadError): lambda e: (
             _handle_connection_error_detail(e, lang)
         ),
@@ -314,7 +314,7 @@ def get_msg_from_except(ex):
         ),
 
         ConnectionAbortedError: lambda e: (
-            "连接意外中断，请检查网络稳定性" if lang == 'zh'
+            'The connection was interrupted unexpectedly, please check network stability' if lang == 'zh'
             else "Connection aborted unexpectedly, check network stability"
         ),
         (ReqConnectionError, ConnectionError): lambda e: (
@@ -325,109 +325,109 @@ def get_msg_from_except(ex):
         RuntimeError: lambda e: (f"{e}" if lang == 'zh' else f"{e}" ),
 
         FileNotFoundError: lambda e: (
-            f"文件不存在：{getattr(e, 'filename', '')}" if lang == 'zh'
+            f"File does not exist:{getattr(e, 'filename', '')}" if lang == 'zh'
             else f"File not found: {getattr(e, 'filename', '')}"
         ),
 
         PermissionError: lambda e: (
-            f"权限不足，无法访问：{getattr(e, 'filename', '')}" if lang == 'zh'
+            f"Insufficient permissions to access:{getattr(e, 'filename', '')}" if lang == 'zh'
             else f"Permission denied: {getattr(e, 'filename', '')}"
         ),
 
         FileExistsError: lambda e: (
-            f"文件已存在：{getattr(e, 'filename', '')}" if lang == 'zh'
+            f"File already exists:{getattr(e, 'filename', '')}" if lang == 'zh'
             else f"File already exists: {getattr(e, 'filename', '')}"
         ),
 
-        # === 操作系统错误 ===
+        # === Operating system error ===
         OSError: lambda e: (
-            f"系统错误 ({e.errno})：{e.strerror}" if lang == 'zh'
+            f"System error ({e.errno})：{e.strerror}" if lang == 'zh'
             else f"System Error ({e.errno}): {e.strerror}"
         ),
 
-        # === 数据处理错误 ===
+        # === Data processing error ===
         KeyError: lambda e: (
-            f"处理数据时缺少必需的键：{e}" if lang == 'zh'
+            f"A required key is missing when processing the data:{e}" if lang == 'zh'
             else f"{e}"
         ),
 
         IndexError: lambda e: (
-            f"处理列表或序列时索引越界:{e}" if lang == 'zh'
+            f"Index out of bounds when processing list or sequence:{e}" if lang == 'zh'
             else f"{e}"
         ),
 
         LookupError: lambda e: (
-            f"查找错误，指定的键或索引不存在:{e}" if lang == 'zh'
+            f"Find error, the specified key or index does not exist:{e}" if lang == 'zh'
             else f"{e}"
         ),
 
         UnicodeDecodeError: lambda e: (
-            f"文件或数据解码失败，编码格式错误：{e.reason}" if lang == 'zh'
+            f"File or data decoding failed, encoding format error:{e.reason}" if lang == 'zh'
             else f" {e.reason}"
         ),
 
         ValueError: lambda e: (
-            f"无效的值或参数：{e}" if lang == 'zh'
+            f"Invalid value or argument:{e}" if lang == 'zh'
             else f"{e}"
         ),
 
-        # === 程序内部错误 ===
+        # === Program internal error ===
         AttributeError: lambda e: (
-            f"程序内部错误：{e}" if lang == 'zh'
+            f"Internal program error:{e}" if lang == 'zh'
             else f"{e}"
         ),
 
         NameError: lambda e: (
-            f"程序内部错误：未定义的变量 '{e.name}'" if lang == 'zh' else f"{e}"
+            f"Internal program error: undefined variable '{e.name}'" if lang == 'zh' else f"{e}"
         ),
 
         TypeError: lambda e: (
-            f"程序内部错误：{e}" if lang == 'zh'
+            f"Internal program error:{e}" if lang == 'zh'
             else f"{e}"
         ),
 
         RecursionError: lambda e: (
-            f"程序内部错误：发生无限递归:{e}" if lang == 'zh'
+            f"Internal program error: infinite recursion occurred:{e}" if lang == 'zh'
             else f"{e}"
         ),
 
         ZeroDivisionError: lambda e: (
-            f"算术错误：除数为零:{e}" if lang == 'zh'
+            f"Arithmetic error: division by zero:{e}" if lang == 'zh'
             else f"{e}"
         ),
 
         OverflowError: lambda e: (
-            f"算术错误：数值超出最大限制:{e}" if lang == 'zh'
+            f"Arithmetic error: Value exceeds maximum limit:{e}" if lang == 'zh'
             else f"{e}"
         ),
 
         BrokenPipeError: lambda e: (
-            "连接管道损坏，请检查网络连接" if lang == 'zh'
+            'The connecting pipe is damaged, please check the network connection' if lang == 'zh'
             else "Broken pipe error, check network connection"
         ),
     }
 
-    # 遍历映射，查找匹配的处理器
+    # Traverse the map and find matching processors
     for exc_types, handler in exception_handlers.items():
         if isinstance(ex, exc_types):
             return handler(ex)
 
-    # === 后备处理逻辑 ===
+    # === Backup processing logic ===
     error_str = str(ex)
     if any(keyword in error_str.lower() for keyword in [
         'connection', 'connect', 'refused', 'reset', 'timeout', 'retries',
-        '连接', '拒绝', '重置', '超时', '重试', 'host', 'port', 'http', 'tcp','ProxyError'
+        'connect', 'reject', 'reset', 'timeout', 'Try again', 'host', 'port', 'http', 'tcp','ProxyError'
     ]):
         return _handle_connection_error_detail(ex, lang)
 
-    # 尝试从异常对象中提取更具体的信息
+    # Try to extract more specific information from the exception object
     if hasattr(ex, 'error') and ex.error:
         if isinstance(ex.error, dict):
             error_msg = str(ex.error.get('message', ex.error))
         else:
             error_msg = str(ex.error)
         return (
-            f"错误详情：{error_msg}" if lang == 'zh'
+            f"Error details:{error_msg}" if lang == 'zh'
             else f"Error details: {error_msg}"
         )
 
@@ -458,5 +458,5 @@ def get_msg_from_except(ex):
                 return str(error_info)
         return str(ex.body)
 
-    # 默认错误消息
+    #Default error message
     return ''

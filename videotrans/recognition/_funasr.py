@@ -1,4 +1,4 @@
-# stt项目识别接口
+# stt project identification interface
 import json
 import re, os, requests
 import threading

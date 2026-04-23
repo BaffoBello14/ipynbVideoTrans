@@ -41,7 +41,7 @@ class F5TTS(BaseTTS):
         if sepflag > -1:
             self.api_url = self.api_url[:sepflag]
 
-        # 返回 不是 False，则为内网地址，将代理重设为 None
+        # Return if it is not False, it is the intranet address and reset the proxy to None
         if self.proxy_str and self._get_internal_host is not False:
             self.proxy_str=None
         self.client=None
@@ -87,9 +87,9 @@ class F5TTS(BaseTTS):
             gen_text_input=text,
             remove_silence=True,
             randomize_seed=True,
-            seed_input=0,  # 开启随机后，这个数字会被忽略，填多少都行
-            cross_fade_duration_slider=0.0, # 默认交叉淡入淡出时长
-            nfe_slider=32,            # 默认推理步数，F5-TTS 推荐 32
+            seed_input=0,  # After turning on randomization, this number will be ignored. You can fill in any number you want.
+            cross_fade_duration_slider=0.0, #Default crossfade duration
+            nfe_slider=32,            #Default number of inference steps, F5-TTS recommends 32
 
 
             speed_slider=speed,
@@ -188,7 +188,7 @@ class F5TTS(BaseTTS):
             result = self.client.predict(**kw)
         except Exception as e:
             if kw['emo_control_method']==3 and 'is not in the list of choices' in str(e):
-                raise StopRetry('请修改indextts2的webui.py的代码\nEMO_CHOICES_OFFICIAL = EMO_CHOICES_ALL[:-1] \n修改为\nEMO_CHOICES_OFFICIAL = EMO_CHOICES_ALL\n然后重启indextts2,或者删掉菜单TTS设置-F5/Index中的IndexTTS的prompt')
+                raise StopRetry('Please modify the code of webui.py of indextts2\nEMO_CHOICES_OFFICIAL = EMO_CHOICES_ALL[:-1]\nModify to\nEMO_CHOICES_OFFICIAL = EMO_CHOICES_ALL\nThen restart indextts2, or delete the IndexTTS prompt in the menu TTS Settings-F5/Index')
             raise
 
 
@@ -325,7 +325,14 @@ class F5TTS(BaseTTS):
                 self.client = Client(self.api_url, httpx_kwargs={"timeout": 7200,"proxy":self.proxy_str}, ssl_verify=False)
             except ValueError as e:
                 if 'api_name' in str(e):
-                    raise StopRetry(f'api_name名称不正确，请确保使用该TTS的官方源码部署\F5-TTS: https://github.com/SWivid/F5-TTS\nIndex-TTS: https://github.com/index-tts/index-tts\nSpark-TTS: https://github.com/SparkAudio/Spark-TTS\nVoxCPM-TTS: https://github.com/OpenBMB/VoxCPM\nDia-TTS: https://github.com/nari-labs/dia')
+                    raise StopRetry(
+                        "Incorrect api_name; deploy this TTS from its official source.\n"
+                        "F5-TTS: https://github.com/SWivid/F5-TTS\n"
+                        "Index-TTS: https://github.com/index-tts/index-tts\n"
+                        "Spark-TTS: https://github.com/SparkAudio/Spark-TTS\n"
+                        "VoxCPM-TTS: https://github.com/OpenBMB/VoxCPM\n"
+                        "Dia-TTS: https://github.com/nari-labs/dia"
+                    )
                 raise
             except Exception as e:
                 raise StopRetry( f'{e}')

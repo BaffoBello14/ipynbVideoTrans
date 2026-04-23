@@ -1,4 +1,4 @@
-# zh_recogn 识别
+# zh_recognition recognition
 import json
 import logging
 import re
@@ -51,7 +51,7 @@ class GeminiRecogn(BaseRecogn):
                 )
             parts.append(types.Part.from_text(text=prompt))
 
-            logger.debug(f'发送音频到Gemini:prompt={prompt},{seg_group=}')
+            logger.debug(f'Send audio to Gemini:prompt={prompt},{seg_group=}')
             generate_content_config = types.GenerateContentConfig(
                 max_output_tokens=65536,
                 thinking_config=types.ThinkingConfig(
@@ -106,14 +106,14 @@ class GeminiRecogn(BaseRecogn):
         srt_str_list = []
 
         prompt = Path(ROOT_DIR+'/videotrans/prompts/recogn/gemini_recogn.txt').read_text(encoding='utf-8')
-        # 保存说话人
+        # Save speaker
         speaker_list=[]
         for seg_group in seg_list:
             api_key = self.api_keys.pop(0)
             self.api_keys.append(api_key)
             
             res_text=self._req(seg_group,api_key,prompt)
-            logger.debug(f'gemini返回结果:{res_text=}')
+            logger.debug(f'gemini returns results:{res_text=}')
             m = re.findall(r'<audio_text[^\>]*?>(.*?)<\/audio_text>', res_text.strip(), re.I | re.S)
             if len(m) < 1:
                 continue

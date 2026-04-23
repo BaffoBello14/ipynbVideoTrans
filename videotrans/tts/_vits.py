@@ -11,7 +11,7 @@ except ImportError:
 import soundfile as sf
 
 _model_obj={}
-#用于多进程
+#for multiple processes
 def _t(role,device='cpu'):
     sid=0
     tts_config=None
@@ -158,7 +158,7 @@ class VitsCNEN(BaseTTS):
             self.error=err
             msg=f'[{err}] errors, {ok} succeed'
             self._signal(text=msg)
-            logger.debug(f'vits配音结束：{msg}')
+            logger.debug(f'vits dubbing ends:{msg}')
 
         try:
             del _model_obj

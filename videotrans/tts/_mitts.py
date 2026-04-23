@@ -79,7 +79,7 @@ class MITTS(BaseTTS):
         try:
             _run()
         except Exception as e:
-            logger.error(f'xiaomi tts配音出错:{e}\n{post_message=}')
+            logger.error(f'xiaomi tts dubbing error:{e}\n{post_message=}')
             self.error=e
             raise
 

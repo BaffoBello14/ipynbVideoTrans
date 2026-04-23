@@ -39,17 +39,17 @@ class ChatterBoxTTS(BaseTTS):
                 return
             if data_item.get('ref_wav') or (
                     role and role != 'chatterbox' and Path(f'{ROOT_DIR}/f5-tts/{role}').exists()):
-                # 克隆
+                # clone
                 self._item_task_clone(data_item['text'], role, data_item.get('ref_wav'), data_item['filename'])
                 return
             client = OpenAI(api_key='123456', base_url=self.api_url + '/v1')
             response = client.audio.speech.create(
-                model="chatterbox-tts",  # 这是一个兼容性参数
-                voice=self.language.split('-')[0],  # 这也是一个兼容性参数
+                model="chatterbox-tts",  # This is a compatibility parameter
+                voice=self.language.split('-')[0],  # This is also a compatibility parameter
                 input=data_item['text'],
-                speed=float(params.get("chatterbox_cfg_weight",'1.0')),  # 兼容，用于传递 cfg_weight
-                instructions=str(params.get("chatterbox_exaggeration",'')),  # 兼容传递 exaggeration
-                response_format="mp3"  # 请求mp3格式
+                speed=float(params.get("chatterbox_cfg_weight",'1.0')),  # Compatible, used to pass cfg_weight
+                instructions=str(params.get("chatterbox_exaggeration",'')),  # Compatible with passing exaggeration
+                response_format="mp3"  # Request mp3 format
             )
 
             response.stream_to_file(data_item['filename'] + ".mp3")
@@ -68,18 +68,18 @@ class ChatterBoxTTS(BaseTTS):
         else:
             ref_wav = f'{ROOT_DIR}/f5-tts/{role}'
             mime_type, _ = mimetypes.guess_type(ref_wav)
-            # 如果无法根据扩展名猜出类型，则使用通用的二进制流类型作为备用
+            # If the type cannot be guessed based on the extension, use a generic binary stream type as a fallback
             if mime_type is None:
                 mime_type = 'application/octet-stream'
 
         with open(ref_wav, 'rb') as audio_file:
-            # 定义form-data中的文件部分
-            # key 'audio_prompt' 必须与 Flask 服务器端 `request.files['audio_prompt']` 匹配
+            # Define the file part in form-data
+            # key 'audio_prompt' must match Flask server-side `request.files['audio_prompt']`
             files_payload = {
                 'audio_prompt': (os.path.basename(ref_wav), audio_file, mime_type)
             }
-            # 定义form-data中的文本部分
-            # key 'input' 必须与 Flask 服务器端 `request.form['input']` 匹配
+            # Define the text part in form-data
+            # key 'input' must match Flask server-side `request.form['input']`
             form_data = {
                 'input': text,
                 'response_format': 'mp3',
@@ -87,16 +87,16 @@ class ChatterBoxTTS(BaseTTS):
                 'exaggeration': params.get("chatterbox_exaggeration",''),
                 'language': self.language.split('-')[0]
             }
-            # 发送POST请求，设置合理的超时时间
+            #Send a POST request and set a reasonable timeout
             response = requests.post(
                 self.api_url + '/v2/audio/speech_with_prompt',
                 data=form_data,
                 files=files_payload,
-                timeout=7200  # TTS可能需要一些时间，设置一个较长的超时
+                timeout=7200  # TTS may take some time, set a longer timeout
             )
-            # 检查HTTP响应状态码，如果不是2xx，则会引发HTTPError
+            # Check the HTTP response status code. If it is not 2xx, HTTPError will be raised.
             response.raise_for_status()
-            # 将返回的二进制音频内容写入文件
+            #Write the returned binary audio content to a file
             with open(filename + ".mp3", 'wb') as output_file:
                 output_file.write(response.content)
             self.convert_to_wav(filename + ".mp3", filename)

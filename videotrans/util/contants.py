@@ -1,13 +1,13 @@
-# 各种字面常量
+# Various literal constants
 LISTEN_TEXT={
-        "zh": "你好啊，我亲爱的朋友，希望你的每一天都是美好愉快的！",
-        "zh-cn": "你好啊，我亲爱的朋友，希望你的每一天都是美好愉快的！",
-        "zh-tw": "你好啊，我親愛的朋友，希望你的每一天都是美好愉快的！",
+        "zh": 'Hello, my dear friend, I hope every day of your life is wonderful and happy!',
+        "zh-cn": 'Hello, my dear friend, I hope every day of your life is wonderful and happy!',
+        "zh-tw": 'Hello, my dear friend, I hope every day of your life is wonderful and happy!',
         "nb": "Hallo, min kjære venn, jeg håper hver dag din er fantastisk og gledelig.",
         "en": "Hello, my dear friend. I hope your every day is beautiful and enjoyable!",
         "fr": "Bonjour mon cher ami. J'espère que votre quotidien est beau et agréable !",
         "de": "Hallo mein lieber Freund. Ich hoffe, dass Ihr Tag schön und angenehm ist!",
-        "ja": "こんにちは私の親愛なる友人。 あなたの毎日が美しく楽しいものでありますように！",
+        "ja": "こんにちはprivate dear friend. It's beautiful every day!",
         "ko": "안녕, 내 사랑하는 친구. 당신의 매일이 아름답고 즐겁기를 바랍니다!",
         "ru": "Привет, мой дорогой друг. Желаю, чтобы каждый твой день был прекрасен и приятен!",
         "es": "Hola mi querido amigo. ¡Espero que cada día sea hermoso y agradable!",
@@ -33,7 +33,7 @@ LISTEN_TEXT={
         "fil": "Hello, kaibigan ko",
         "fa": "سلام دوستای گلم امیدوارم هر روز از زندگیتون عالی و شاد باشه.",
         "ur": "ہیلو پیارے دوست، مجھے امید ہے کہ آپ آج خوش ہوں گے۔",
-        "yue": "你好啊親愛嘅朋友，希望你今日好開心",
+        "yue": 'Hello, my dear friend, I hope you are happy today',
 
 }
 FASTER_MODELS_DICT= {
@@ -58,18 +58,18 @@ FASTER_MODELS_DICT= {
     "turbo": "mobiuslabsgmbh/faster-whisper-large-v3-turbo",
 }
 
-# 不使用代理的域名
+# Do not use the proxy domain name
 _no_proxy_list = [
-    # --- 腾讯云 ---
+    # --- Tencent Cloud ---
     "tencentcloudapi.com", ".tencentcloudapi.com",
     
     # --- HuggingFace ---
     "hf-mirror.com", ".hf-mirror.com",
     
-    # --- 百度 (包含 fanyi.baidu 等所有子域) ---
+    # --- Baidu (including all subdomains such as fanyi.baidu) ---
     "baidu.com", ".baidu.com",
     
-    # --- 字节跳动 (包含 openspeech 等所有子域) ---
+    # --- ByteDance (including all subdomains such as openpeech) ---
     "bytedance.com", ".bytedance.com",".volces.com","volces.com",
     
     # --- MiniMax ---
@@ -81,7 +81,7 @@ _no_proxy_list = [
     # --- ModelScope ---
     "modelscope.cn", ".modelscope.cn",
 
-    # --- 阿里云 (包含 dashscope, aliyuncs 等) ---
+    # --- Alibaba Cloud (including dashscope, aliyuncs, etc.) ---
     "aliyuncs.com", ".aliyuncs.com",
 
     # --- SiliconFlow ---
@@ -90,18 +90,18 @@ _no_proxy_list = [
 
     "ms.show", ".ms.show",
     "bigmodel.cn", ".bigmodel.cn",
-    #"microsoft.com", ".microsoft.com", # 涵盖 tts.speech.microsoft.com
+    #"microsoft.com", ".microsoft.com", # covers tts.speech.microsoft.com
 
-    # --- 本地回环 (涵盖所有端口：7860, 8000, 9880, 5051等) ---
+    # --- Local loopback (covers all ports: 7860, 8000, 9880, 5051, etc.) ---
     "localhost",
     "127.0.0.1",
     "0.0.0.0",
 ]
 no_proxy = ",".join(_no_proxy_list)
 
-# funasr模型
+#funasrmodel
 FUNASR_MODEL = ['Fun-ASR-Nano-2512', 'Fun-ASR-MLT-Nano-2512', 'paraformer-zh', 'SenseVoiceSmall']
-# deepgram 支持的语音识别模型
+# Speech recognition models supported by deepgram
 DEEPGRAM_MODEL = [
     "nova-3",
     "whisper-large",
@@ -114,19 +114,19 @@ DEEPGRAM_MODEL = [
     "base",
 ]
 
-# 支持的视频格式
+#Supported video formats
 VIDEO_EXTS = ["mp4", "mkv", "mpeg", "avi", "mov", "mts", "webm", "ogg", "ts", "flv"]
-# 支持的音频格式
+#Supported audio formats
 AUDIO_EXITS = ["mp3", "wav", "aac", "flac", "m4a","ogg"]
 
 ChatTTS_VOICE="11,12,16,2222,4444,6653,7869,9999,5,13,14,1111,3333,4099,5099,5555,8888,6666,7777"
-# 缺省 gemini 模型
+#Default gemini model
 DEFAULT_GEMINI_MODEL = "gemini-3-pro-preview,gemini-3-flash-preview,gemini-2.5-pro,gemini-2.5-flash,gemini-2.0-flash,gemini-2.0-flash-lite"
-# openai-tts音色
+# openai-tts sounds
 OPENAITTS_ROLES = "No,alloy,ash,ballad,coral,echo,fable,onyx,nova,sage,shimmer,verse"
 XAITTS_ROLES='eve,ara,rex,sal,leo'
 MITTS_ROLES='mimo_default,default_zh,default_en'
-# gemini-tts 音色
+#gemini-tts sounds
 GEMINITTS_ROLES = "No,Zephyr,Puck,Charon,Kore,Fenrir,Leda,Orus,Aoede,Callirrhoe,Autonoe,Enceladus,Iapetus,Umbriel,Algieba,Despina,Erinome,Algenib,Rasalgethi,Laomedeia,Achernar,Alnilam,Schedar,Gacrux,Pulcherrima,Achird,Zubenelgenubi,Vindemiatrix,Sadachbia,Sadaltager,Sulafat"
 
 Whisper_cpp_models="ggml-tiny.bin,ggml-base.bin,ggml-small.bin,ggml-medium.bin,ggml-large-v1.bin,ggml-large-v2.bin,ggml-large-v3.bin,ggml-large-v3-turbo.bin"

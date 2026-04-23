@@ -21,7 +21,7 @@ class OmniVoice(BaseTTS):
         super().__post_init__()
         self.api_url = params.get('omnivoice_url','').strip().rstrip('/').lower()
         self._add_internal_host_noproxy(self.api_url)
-        # 语言代码 对应语言名称
+        # Language code corresponding language name
         self.lang_code={
             "en": "English",
             "zh-cn": "Chinese",

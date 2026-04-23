@@ -32,13 +32,13 @@ class QwenMT(BaseTrans):
                     "content":text
                 }
             ]
-            logger.debug(f'qwen-mt请求:{messages}')
+            logger.debug(f'qwen-mt request:{messages}')
 
             translation_options = {
                 "source_lang": "auto",
                 "target_lang": self.target_language_name
             }
-            # 术语表
+            # Glossary
             term=tools.qwenmt_glossary()
             if term:
                 translation_options['terms']=term
@@ -47,7 +47,7 @@ class QwenMT(BaseTrans):
 
 
             response = dashscope.Generation.call(
-                # 若没有配置环境变量，请用阿里云百炼API Key将下行替换为：api_key="sk-xxx",
+                # If the environment variable is not configured, please replace the following line with Alibaba Cloud Bailian API Key: api_key="sk-xxx",
                 api_key=params.get('qwenmt_key',''),
                 model=model_name,
                 messages=messages,
@@ -56,7 +56,7 @@ class QwenMT(BaseTrans):
             )
             if response.code or not response.output:
                 raise RuntimeError(response.message)
-            logger.debug(f'qwen-mt返回响应:{response.output.choices[0].message.content}')
+            logger.debug(f'qwen-mt returns response:{response.output.choices[0].message.content}')
             return self.clean_srt(response.output.choices[0].message.content)
 
         self.prompt = tools.get_prompt(ainame='bailian',aisendsrt=self.aisendsrt).replace('{lang}', self.target_language_name)
@@ -70,17 +70,17 @@ class QwenMT(BaseTrans):
                 },
         ]
         response = dashscope.Generation.call(
-            # 若没有配置环境变量，请用百炼API Key将下行替换为：api_key="sk-xxx",
+            # If there is no environment variable configured, please replace the following line with Bailian API Key: api_key="sk-xxx",
             api_key=params.get('qwenmt_key',''),
             model=model_name,
-            # 此处以qwen-plus为例，可按需更换模型名称。模型列表：https://help.aliyun.com/zh/model-studio/getting-started/models
+            # Here we take qwen-plus as an example. You can change the model name as needed. Model list: https://help.aliyun.com/zh/model-studio/getting-started/models
             messages=message,
             result_format='message'
         )
 
         if response.code or not response.output:
             raise RuntimeError(response.message)
-        logger.debug(f'阿里百炼 AI响应:{response.output.choices[0].message.content}')
+        logger.debug(f'Alibaba Bailian AI response:{response.output.choices[0].message.content}')
         match = re.search(r'<TRANSLATE_TEXT>(.*?)</TRANSLATE_TEXT>', response.output.choices[0].message.content, re.S)
         if match:
             return match.group(1)
@@ -89,26 +89,26 @@ class QwenMT(BaseTrans):
 
 
     def clean_srt(self, srt):
-        # 替换特殊符号
+        #Replace special symbols
         srt = re.sub(r'&gt;', '>', srt,flags=re.I | re.S)
-        # ：: 换成 :
+        # :: Replace with :
         srt = re.sub(r'([：:])\s*', ':', srt,flags=re.I | re.S)
-        # ,， 换成 ,
+        # ,, replace with ,
         srt = re.sub(r'([,，])\s*', ',', srt,flags=re.I | re.S)
         srt = re.sub(r'([`’\'\"])\s*', '', srt,flags=re.I | re.S)
 
-        # 秒和毫秒间的.换成,
+        # Between seconds and milliseconds. Replace with,
         srt = re.sub(r'(:\d+)\.\s*?(\d+)', r'\1,\2', srt,flags=re.I | re.S)
-        # 时间行前后加空格
+        # Add spaces before and after the time line
         time_line = r'(\s?\d+:\d+:\d+(?:,\d+)?)\s*?-->\s*?(\d+:\d+:\d+(?:,\d+)?\s?)'
         srt = re.sub(time_line, r"\n\1 --> \2\n", srt,flags=re.I | re.S)
         # twenty one\n00:01:18,560 --> 00:01:22,000\n
         srt = re.sub(r'\s?[a-zA-Z ]{3,}\s*?\n?(\d{2}:\d{2}:\d{2}\,\d{3}\s*?\-\->\s*?\d{2}:\d{2}:\d{2}\,\d{3})\s?\n?',
                      "\n" + r'1\n\1\n', srt,flags=re.I | re.S)
-        # 去除多余的空行
+        # Remove extra blank lines
         srt = "\n".join([it.strip() for it in srt.splitlines() if it.strip()])
 
-        # 删掉以空格或换行连接的多个时间行
+        # Delete multiple time lines connected by spaces or newlines
         time_line2 = r'(\s\d+:\d+:\d+(?:,\d+)?)\s*?-->\s*?(\d+:\d+:\d+(?:,\d+)?\s)(?:\s*\d+:\d+:\d+(?:,\d+)?)\s*?-->\s*?(\d+:\d+:\d+(?:,\d+)?\s*)'
         srt = re.sub(time_line2, r'\n\1 --> \2\n', srt,flags=re.I | re.S)
         srt_list = [it.strip() for it in srt.splitlines() if it.strip()]
@@ -124,6 +124,6 @@ class QwenMT(BaseTrans):
 
         srt = "\n".join(remove_list)
 
-        # 行号前添加换行符
+        # Add a newline character before the line number
         srt = re.sub(r'\s?(\d+)\s+?(\d+:\d+:\d+)', r"\n\n\1\n\2", srt,flags=re.I | re.S)
         return srt.strip().replace('&#39;', '"').replace('&quot;', "'")

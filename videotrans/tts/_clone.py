@@ -26,7 +26,7 @@ class CloneVoice(BaseTTS):
         self.splits = {"，", "。", "？", "！", ",", ".", "?", "!", "~", ":", "：", "—", "…"}
 
         api_url = params.get('clone_api', '').strip().rstrip('/').lower()
-        # 确保即使 api_url 为空也不会出错
+        # Ensure that no error occurs even if api_url is empty
         if api_url:
             self.api_url = 'http://' + api_url.replace('http://', '')
         self._add_internal_host_noproxy(self.api_url)
@@ -51,7 +51,7 @@ class CloneVoice(BaseTTS):
             if role=='clone'  and (not data_item.get('ref_wav') or not Path(data_item.get('ref_wav')).exists()):
                 raise StopRetry(tr("No reference audio exists and cannot use clone function"))
             if role != 'clone':
-                # 不是克隆，使用已有声音
+                # Not a clone, use existing sounds
                 data['voice'] = role
                 res = requests.post(f"{self.api_url}/apitts", data=data,timeout=3600)
             else:

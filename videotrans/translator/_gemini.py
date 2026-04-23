@@ -109,7 +109,7 @@ class Gemini(BaseTrans):
                      
             logger.debug(f'{result=}')
             if not result:
-                logger.warning(f'[gemini]请求失败')
+                logger.warning(f'[gemini]Request failed')
                 raise RuntimeError(f"[Gemini]result is empty")
                 
             match = re.search(r'<TRANSLATE_TEXT>(.*?)(?:</TRANSLATE_TEXT>|$)',

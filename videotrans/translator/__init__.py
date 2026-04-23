@@ -2,7 +2,7 @@
 from pathlib import Path
 from typing import Union, List
 
-# 数字代表显示顺序
+# Numbers represent display order
 from videotrans.configure.config import tr,settings,params,app_cfg,logger,ROOT_DIR
 from videotrans.util import tools
 
@@ -46,7 +46,7 @@ CAMB_INDEX = 24
 
 
 
-# AI翻译渠道，方便判断
+# AI translation channel to facilitate judgment
 AI_TRANS_CHANNELS=[
     CHATGPT_INDEX,
     LOCALLLM_INDEX,
@@ -62,7 +62,7 @@ AI_TRANS_CHANNELS=[
     MINIMAX_INDEX,
     CAMB_INDEX
 ]
-# 翻译通道名字列表，显示在界面
+# Translation channel name list, displayed in the interface
 _ID_NAME_DICT = {
     GOOGLE_INDEX:tr('Google'),
     MICROSOFT_INDEX:tr('Microsoft'),
@@ -100,12 +100,12 @@ TRANSLASTE_NAME_LIST=list(_ID_NAME_DICT.values())
 
 # subtitles language code https://zh.wikipedia.org/wiki/ISO_639-2%E4%BB%A3%E7%A0%81%E5%88%97%E8%A1%A8
 #  https://www.loc.gov/standards/iso639-2/php/code_list.php
-# 腾讯翻译 https://cloud.tencent.com/document/api/551/15619
-# google翻译 https://translate.google.com/
-# 百度翻译 https://fanyi.baidu.com/
+# Tencent Translation https://cloud.tencent.com/document/api/551/15619
+# google translate https://translate.google.com/
+# Baidu Translation https://fanyi.baidu.com/
 # deepl  https://deepl.com/
 # microsoft https://www.bing.com/translator?mkt=zh-CN
-# 阿里 机器翻译https://help.aliyun.com/zh/machine-translation/developer-reference/machine-translation-language-code-list?spm=a2c4g.11186623.help-menu-30396.d_4_4.4bda2b009oye8y
+# Ali Machine Translation https://help.aliyun.com/zh/machine-translation/developer-reference/machine-translation-language-code-list?spm=a2c4g.11186623.help-menu-30396.d_4_4.4bda2b009oye8y
 # qwen-mt https://help.aliyun.com/zh/model-studio/machine-translation?spm=5176.30275541.J_ZGek9Blx07Hclc3Ddt9dg.1.69bf2f3dfuEVHs&scm=20140722.S_help@@%E6%96%87%E6%A1%A3@@2860790._.ID_help@@%E6%96%87%E6%A1%A3@@2860790-RL_qwen~DAS~mt-LOC_2024SPHelpResult-OR_ser-PAR1_0bc3b4ad17766086921897050e02b4-V_4-PAR3_o-RE_new5-P0_0-P1_0#038d2865bbydc
 # m2m100  https://github.com/ymoslem/DesktopTranslator/blob/main/utils/m2m_languages.json
 LANGNAME_DICT = {
@@ -140,32 +140,32 @@ LANGNAME_DICT = {
     "fa": tr("Persian"),
     "fil": tr("Filipino"),
     "ur": tr("Urdu"),
-    "nb": tr("Norway"),# 书面挪威语
+    "nb": tr("Norway"),# written norwegian
     "yue": tr("Cantonese")
 }
 
-# 如果存在新增
+# If there is a new
 try:
     if Path(ROOT_DIR+f'/videotrans/newlang.txt').exists():
         _new_lang=Path(ROOT_DIR+f'/videotrans/newlang.txt').read_text().strip().split("\n")
         for nl in _new_lang:
             LANGNAME_DICT[nl]=nl
 except Exception as e:
-    logger.exception(f'读取自定义新增语言代码 newlang.txt 时出错 {e}', exc_info=True)
-# 反向按照显示名字查找语言代码
+    logger.exception(f'An error occurred while reading the custom new language code newlang.txt{e}', exc_info=True)
+# Reversely search for the language code by display name
 LANGNAME_DICT_REV={v:k for k,v in LANGNAME_DICT.items()}
-# 根据语言代码查找各个翻译渠道对应的 代码list
+# Find the code list corresponding to each translation channel based on the language code
 LANG_CODE = {
     "zh-cn": [
-        "zh-cn",  # google通道
-        "chi",  # 字幕嵌入语言
-        "zh",  # 百度通道
-        "ZH-HANS",  # deepl deeplx通道
-        "zh",  # 腾讯通道
-        "zh",  # OTT通道
-        "zh-Hans",  # 微软翻译
-        "Simplified Chinese",  # AI翻译
-        "zh",  # 阿里
+        "zh-cn",  #googlechannel
+        "chi",  # Subtitle embedding language
+        "zh",  # Baidu channel
+        "ZH-HANS",  # deepl deeplx channel
+        "zh",  # Tencent Channel
+        "zh",  #OTTchannel
+        "zh-Hans",  #MicrosoftTranslator
+        "Simplified Chinese",  #AITranslation
+        "zh",  # ali
         "Chinese", # qwen-mt qwen-tts qwen-asr
         "zh" # m2m100
     ],
@@ -183,42 +183,42 @@ LANG_CODE = {
         "zh" # m2m100
     ],
     "ur": [
-        "ur",  # google通道
-        "urd",  # 字幕嵌入语言
-        "ur",  # 百度通道
-        "No",  # deepl deeplx通道
-        "No",  # 腾讯通道
-        "No",  # OTT通道
-        "ur",  # 微软翻译
-        "Urdu",  # AI翻译
-        "ur",  # 阿里
+        "ur",  #googlechannel
+        "urd",  # Subtitle embedding language
+        "ur",  # Baidu channel
+        "No",  # deepl deeplx channel
+        "No",  # Tencent Channel
+        "No",  #OTTchannel
+        "ur",  #MicrosoftTranslator
+        "Urdu",  #AITranslation
+        "ur",  # ali
         "Urdu",
         "ur" # m2m100
     ],
     "yue": [
-        "yue",  # google通道
-        "chi",  # 字幕嵌入语言
-        "yue",  # 百度通道
-        "No",  # deepl deeplx通道
-        "No",  # 腾讯通道
-        "No",  # OTT通道
-        "yue",  # 微软翻译
-        "Cantonese",  # AI翻译
-        "yue",  # 阿里
+        "yue",  #googlechannel
+        "chi",  # Subtitle embedding language
+        "yue",  # Baidu channel
+        "No",  # deepl deeplx channel
+        "No",  # Tencent Channel
+        "No",  #OTTchannel
+        "yue",  #MicrosoftTranslator
+        "Cantonese",  #AITranslation
+        "yue",  # ali
         "Cantonese",
         "zh" # m2m100
     ],
 
     "fil": [
-        "tl",  # google通道
-        "fil",  # 字幕嵌入语言
-        "fil",  # 百度通道
-        "No",  # deepl deeplx通道
-        "No",  # 腾讯通道
-        "No",  # OTT通道
-        "fil",  # 微软翻译
-        "Filipino",  # AI翻译
-        "fil",  # 阿里
+        "tl",  #googlechannel
+        "fil",  # Subtitle embedding language
+        "fil",  # Baidu channel
+        "No",  # deepl deeplx channel
+        "No",  # Tencent Channel
+        "No",  #OTTchannel
+        "fil",  #MicrosoftTranslator
+        "Filipino",  #AITranslation
+        "fil",  # ali
         "Filipino",
         "No"
     ],
@@ -360,10 +360,10 @@ LANG_CODE = {
         "nob",         # subtitle embed (ISO 639-2/B)
         "nob",          # baidu
         "NB",          # deepl / deeplx
-        "No",          # tencent 不支持
-        "No",          # OTT 不支持
+        "No",          # tencent is not supported
+        "No",          # OTT not supported
         "nb",          # microsoft / bing
-        "Norwegian Bokmål",       # AI (LLM) 书面挪威语
+        "Norwegian Bokmål",       # AI (LLM) Written Norwegian
         "no",          # alibaba
         "Norwegian Bokmål",       # qwen-mt / qwen-tts / qwen-asr
         "no"           # m2m100
@@ -449,11 +449,11 @@ LANG_CODE = {
     "uk": [
         "uk",
         "ukr",
-        "ukr",  # 百度
+        "ukr",  #baidu
         "UK",  # deepl
-        "No",  # 腾讯
+        "No",  #tencent
         "uk",  # ott
-        "uk",  # 微软
+        "uk",  #Microsoft
         "Ukrainian",
         "No",
         "Ukrainian",
@@ -525,67 +525,67 @@ LANG_CODE = {
         "pl" # m2m100
     ],
     "nl": [
-        "nl",  # google通道
-        "dut",  # 字幕嵌入语言
-        "nl",  # 百度通道
-        "NL",  # deepl deeplx通道
-        "No",  # 腾讯通道
-        "nl",  # OTT通道
-        "nl",  # 微软翻译
-        "Dutch",  # AI翻译
+        "nl",  #googlechannel
+        "dut",  # Subtitle embedding language
+        "nl",  # Baidu channel
+        "NL",  # deepl deeplx channel
+        "No",  # Tencent Channel
+        "nl",  #OTTchannel
+        "nl",  #MicrosoftTranslator
+        "Dutch",  #AITranslation
         "nl",
         "Dutch",
         "nl" # m2m100
     ],
     "sv": [
-        "sv",  # google通道
-        "swe",  # 字幕嵌入语言
-        "swe",  # 百度通道
-        "SV",  # deepl deeplx通道
-        "No",  # 腾讯通道
-        "sv",  # OTT通道
-        "sv",  # 微软翻译
-        "Swedish",  # AI翻译
+        "sv",  #googlechannel
+        "swe",  # Subtitle embedding language
+        "swe",  # Baidu channel
+        "SV",  # deepl deeplx channel
+        "No",  # Tencent Channel
+        "sv",  #OTTchannel
+        "sv",  #MicrosoftTranslator
+        "Swedish",  #AITranslation
         "sv",
         "Swedish",
         "sv" # m2m100
     ],
     "he": [
-        "he",  # google通道
-        "heb",  # 字幕嵌入语言
-        "heb",  # 百度通道
-        "HE",  # deepl deeplx通道
-        "No",  # 腾讯通道
-        "No",  # OTT通道
-        "he",  # 微软翻译
-        "Hebrew",  # AI翻译
+        "he",  #googlechannel
+        "heb",  # Subtitle embedding language
+        "heb",  # Baidu channel
+        "HE",  # deepl deeplx channel
+        "No",  # Tencent Channel
+        "No",  #OTTchannel
+        "he",  #MicrosoftTranslator
+        "Hebrew",  #AITranslation
         "he",
         "Hebrew",
         "he" # m2m100
     ],
     "bn": [
-        "bn",  # google通道
-        "ben",  # 字幕嵌入语言
-        "ben",  # 百度通道
-        "No",  # deepl deeplx通道
-        "No",  # 腾讯通道
-        "No",  # OTT通道
-        "bn",  # 微软翻译
-        "Bengali",  # AI翻译,
+        "bn",  #googlechannel
+        "ben",  # Subtitle embedding language
+        "ben",  # Baidu channel
+        "No",  # deepl deeplx channel
+        "No",  # Tencent Channel
+        "No",  #OTTchannel
+        "bn",  #MicrosoftTranslator
+        "Bengali",  #AITranslation,
         "bn",
         "Bengali",
         "bn" # m2m100
     ],
     "fa": [
-        "fa",  # google通道
-        "per",  # 字幕嵌入语言
-        "per",  # 百度通道
-        "No",  # deepl deeplx通道
-        "No",  # 腾讯通道
-        "No",  # OTT通道
-        "fa",  # 微软翻译
-        "Persian",  # AI翻译
-        "fa",  # 阿里
+        "fa",  #googlechannel
+        "per",  # Subtitle embedding language
+        "per",  # Baidu channel
+        "No",  # deepl deeplx channel
+        "No",  # Tencent Channel
+        "No",  #OTTchannel
+        "fa",  #MicrosoftTranslator
+        "Persian",  #AITranslation
+        "fa",  # ali
         "Western Persian",
         "fa" # m2m100
     ],
@@ -605,10 +605,10 @@ LANG_CODE = {
 }
 
 
-# 根据界面显示的语言名称，比如“简体中文、English” 获取配置文件中的语言代码，比如 zh-cn en 等, 如果是 cli，则直接是语言代码
+#According to the language name displayed on the interface, such as "Simplified Chinese, English", obtain the language code in the configuration file, such as zh-cn en, etc., if it is cli, it is the language code directly
 def get_code(show_text=None):
-    # - None 即不选择语言，则返回 None，调用处需根据返回结果判断
-    # 未在 LANG CODE 中找到则原样返回
+    # - None means that if no language is selected, None is returned. The caller needs to judge based on the return result.
+    # If not found in LANG CODE, return it as is
     if not show_text or show_text in ['-','No']:
         return None
     if show_text=='zh':
@@ -618,49 +618,49 @@ def get_code(show_text=None):
     return LANGNAME_DICT_REV.get(show_text,show_text)
 
 
-# 根据显示的语言和翻译通道，获取该翻译通道要求的源语言代码和目标语言代码
-# translate_type 翻译通道索引
-# show_source 显示的原语言名称或 - 或  语言代码 
-# show_target 显示的目标语言名称 或 - 或语言代码
-# 如果是AI渠道则返回语言的自然语言名称
-# 新增的语言代码直接返回
-# - No 是兼容早期不规范写法
+#According to the displayed language and translation channel, obtain the source language code and target language code required by the translation channel
+# translate_type translation channel index
+# show_source The original language name displayed or - or language code
+# show_target Displayed target language name or - or language code
+# If it is an AI channel, return the natural language name of the language
+# The newly added language code is returned directly
+# - No is compatible with early irregular writing methods
 def get_source_target_code(*, show_source=None, show_target=None, translate_type=None):
     source_list = None
     target_list = None
 
     if show_source and show_source not in ['-','No']:
-        if show_source in LANG_CODE:# 是语言代码
+        if show_source in LANG_CODE:# is the language code
             source_list = LANG_CODE[show_source] 
-        elif LANGNAME_DICT_REV.get(show_source):#是语言显示名字
+        elif LANGNAME_DICT_REV.get(show_source):# is the language display name
             source_list=LANG_CODE.get(LANGNAME_DICT_REV.get(show_source))
-        elif show_source=='zh':#特殊兼容zh
+        elif show_source=='zh':#Special compatible zh
             source_list=LANG_CODE['zh-cn']
 
     if show_target and show_target not in ['-','No']:
-        if show_target in LANG_CODE:#是语言代码
+        if show_target in LANG_CODE:# is the language code
             target_list = LANG_CODE[show_target] 
-        elif LANGNAME_DICT_REV.get(show_target):#语言名字
+        elif LANGNAME_DICT_REV.get(show_target):#languagename
             target_list=LANG_CODE.get(LANGNAME_DICT_REV.get(show_target))
         elif show_target=='zh':
-            # 特殊兼容zh
+            #Specially compatible with zh
             target_list=LANG_CODE['zh-cn']
 
-    # 均未找到，可能是新增语言代码
+    # None found, it may be a new language code
     if not source_list and not target_list:
-        return show_source,show_target#返回原始输入
+        return show_source,show_target#Return to original input
 
-    # 未设置渠道则使用 Google
+    # If no channel is set, use Google
     if not translate_type or translate_type in [GOOGLE_INDEX,MyMemoryAPI_INDEX, TRANSAPI_INDEX,CAMB_INDEX]:
         return source_list[0] if source_list else show_source, target_list[0] if target_list else show_target
 
-    # qwenmt翻译渠道语言代码
+    # qwenmt translation channel language code
     if translate_type == QWENMT_INDEX:
         if params.get('qwenmt_model', 'qwen-mt-turbo').startswith('qwen-mt'):
             return 'auto',target_list[9] if target_list else show_target
         return source_list[7] if source_list else show_source, target_list[7] if target_list else show_target
 
-    # AI渠道
+    #AIchannel
     if translate_type in AI_TRANS_CHANNELS:
         return source_list[7] if source_list else show_source, target_list[7] if target_list else show_target
 
@@ -683,7 +683,7 @@ def get_source_target_code(*, show_source=None, show_target=None, translate_type
         return source_list[10] if source_list else show_source, target_list[10] if target_list else show_target
     return show_source,show_target
 
-# 单独返回 qwen-mt qwen-tts qwen-asr 所需要的语言名称
+# Return the language name required by qwen-mt qwen-tts qwen-asr separately
 def get_language_qwen(langcode=None):
     if not langcode:
         return None
@@ -695,11 +695,11 @@ def get_language_qwen(langcode=None):
     return _lang_list[9]
 
 
-# 判断当前翻译通道和目标语言是否允许翻译
-# 比如deepl不允许翻译到某些目标语言，某些通道是否填写api key 等
-# translate_type翻译通道
-# show_target 翻译后显示的目标语言名称
-# only_key=True 仅检测 key 和api，不判断目标语言
+# Determine whether the current translation channel and target language allow translation
+# For example, deepl does not allow translation to certain target languages, whether to fill in the api key for certain channels, etc.
+# translate_type translation channel
+# show_target The target language name displayed after translation
+# only_key=True only detects key and api, not the target language
 def is_allow_translate(*, translate_type=None, show_target=None, only_key=False,  return_str=False):
     if not translate_type:
         return True
@@ -712,20 +712,20 @@ def is_allow_translate(*, translate_type=None, show_target=None, only_key=False,
         return False
     if translate_type == ZHIPUAI_INDEX and not params.get('zhipu_key',''):
         if return_str:
-            return "请在菜单-智谱AI中填写智谱AI的api key"
+            return 'Please fill in the api key of Zhipu AI in the menu-Zhipu AI'
         return False
     if translate_type == DEEPSEEK_INDEX and not params.get('deepseek_key',''):
         if return_str:
-            return "请在菜单-DeepSeek中填写api key"
+            return 'Please fill in the api key in the menu-DeepSeek'
         return False
     if translate_type == OPENROUTER_INDEX and not params.get('openrouter_key',''):
         if return_str:
-            return "请在菜单-OpenRouter中填写api key"
+            return 'Please fill in the api key in the menu-OpenRouter'
         return False
 
     if translate_type == SILICONFLOW_INDEX and not params.get('guiji_key',''):
         if return_str:
-            return "请在菜单-硅基流动中填写硅基流动的api key"
+            return 'Please fill in the api key of silicon-based flow in the menu - silicon-based flow'
         return False
     if translate_type == AI302_INDEX and not params.get('ai302_key',''):
         if return_str:
@@ -805,10 +805,10 @@ def is_allow_translate(*, translate_type=None, show_target=None, only_key=False,
         if return_str:
             return "Please configure the api and key information of the OTT channel first."
         return False
-    # 如果只需要判断是否填写了 api key 等信息，到此返回
+    # If you only need to determine whether the api key and other information have been filled in, return here.
     if only_key:
         return True
-    # 再判断是否为No，即不支持
+    # Then check whether it is No, that is, it is not supported.
     index = 0
     if translate_type == BAIDU_INDEX:
         index = 2
@@ -830,7 +830,7 @@ def is_allow_translate(*, translate_type=None, show_target=None, only_key=False,
         elif LANGNAME_DICT_REV.get(show_target):
             target_list=LANG_CODE.get(LANGNAME_DICT_REV.get(show_target))
         elif show_target=='zh':
-            # 特殊兼容zh
+            #Specially compatible with zh
             target_list=LANG_CODE['zh-cn']
         if target_list and target_list[index] == 'No':
             if return_str:
@@ -840,8 +840,8 @@ def is_allow_translate(*, translate_type=None, show_target=None, only_key=False,
     return True
 
 
-# 获取用于进行语音识别的预设语言，比如语音是英文发音、中文发音
-# 根据 原语言进行判断,基本等同于google，但只保留_之前的部分
+# Get the default language for speech recognition, such as English pronunciation or Chinese pronunciation
+# Judge based on the original language, which is basically the same as Google, but only retains the part before _
 def get_audio_code(*, show_source=None):
     if not show_source or show_source in ['auto','-']:
         return 'auto'
@@ -849,7 +849,7 @@ def get_audio_code(*, show_source=None):
     return source_list[0] if source_list else "auto"
 
 
-# 获取嵌入软字幕的3位字母语言代码，根据目标语言确定
+# Get the 3-digit alphabetical language code of embedded soft subtitles, determined according to the target language
 def get_subtitle_code(*, show_target=None):
     try:
         if show_target in LANG_CODE:
@@ -857,7 +857,7 @@ def get_subtitle_code(*, show_target=None):
         if show_target in LANGNAME_DICT_REV:
             return LANG_CODE[LANGNAME_DICT_REV[show_target]][1]
     except Exception as e:
-        logger.error(f'获取字幕嵌入3为语言代码错误:{e}')
+        logger.error(f'Getting subtitle embed 3 as language code error:{e}')
     return 'eng'
 
 def _check_google():
@@ -865,14 +865,14 @@ def _check_google():
     try:
         requests.head(f"https://translate.google.com",timeout=5)
     except Exception as e:
-        logger.exception(f'检测google翻译失败{e}', exc_info=True)
+        logger.exception(f'Detection of google translation failed{e}', exc_info=True)
         return False
     
     return True
     
 
 
-# 翻译,先根据翻译通道和目标语言，取出目标语言代码
+# For translation, first extract the target language code based on the translation channel and target language.
 def run(*, translate_type=0,
         text_list=None,
         is_test=False,
@@ -880,12 +880,12 @@ def run(*, translate_type=0,
         target_code=None,
         uuid=None) -> Union[List, str, None]:
     translate_type = int(translate_type)
-    # ai渠道下，target_language_name 是语言名称
-    # 其他渠道下是语言代码
-    # source_code 是原语言代码
+    # Under the ai channel, target_language_name is the language name
+    # Under other channels is the language code
+    # source_code is the original language code
     target_language_name = target_code
     if translate_type in AI_TRANS_CHANNELS:
-        # 对AI渠道，返回目标语言的自然语言表达
+        # For AI channels, return natural language expressions in the target language
         _, target_language_name = get_source_target_code(show_target=target_code, translate_type=translate_type)
     kwargs = {
         "text_list": text_list,
@@ -902,12 +902,12 @@ def run(*, translate_type=0,
     
     
 
-    # 未设置代理并且检测google失败，则使用微软翻译
+    # If no proxy is set and Google fails to be detected, use Microsoft Translator.
     if translate_type == GOOGLE_INDEX:
         from videotrans.translator._google import Google
         if app_cfg.proxy or _check_google() is True:
             return Google(**kwargs).run()
-        logger.warning('==未设置代理并且检测google失败，使用微软翻译')
+        logger.warning('== No proxy is set and detection of google fails, use Microsoft Translator')
         translate_type = MICROSOFT_INDEX
         
     if translate_type == MyMemoryAPI_INDEX:
@@ -999,4 +999,4 @@ def run(*, translate_type=0,
         from videotrans.translator._camb import CambTranslator
         return CambTranslator(**kwargs).run()
 
-    raise RuntimeError('未选中任何翻译渠道')
+    raise RuntimeError('No translation channels selected')

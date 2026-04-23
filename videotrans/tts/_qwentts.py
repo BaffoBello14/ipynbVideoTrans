@@ -16,7 +16,7 @@ RETRY_NUMS = 2
 RETRY_DELAY = 5
 
 
-# 强制单线程 防止远端限制出错
+# Force single thread to prevent remote restriction errors
 @dataclass
 class QWENTTS(BaseTTS):
 
@@ -29,7 +29,7 @@ class QWENTTS(BaseTTS):
             self.model='qwen3-tts-flash'
 
 
-    # 强制单个线程执行，防止频繁并发失败
+    # Force a single thread to execute to prevent frequent concurrent failures
     def _exec(self):
         if not params.get('qwentts_key',''):
             raise StopRetry(
@@ -39,7 +39,7 @@ class QWENTTS(BaseTTS):
     def _item_task(self, data_item: dict = None,idx:int=-1):
         if self._exit() or not data_item.get('text','').strip():
             return
-        # 主循环，用于无限重试连接错误
+        # Main loop for infinite retry connection errors
         @retry(retry=retry_if_not_exception_type(NO_RETRY_EXCEPT), stop=(stop_after_attempt(RETRY_NUMS)),
                wait=wait_fixed(RETRY_DELAY), before=before_log(logger, logging.INFO),
                after=after_log(logger, logging.INFO))
@@ -64,7 +64,7 @@ class QWENTTS(BaseTTS):
                 raise RuntimeError( f"{response.message if hasattr(response, 'message') else str(response)}")
 
             resurl = requests.get(response.output.audio["url"])
-            resurl.raise_for_status()  # 检查请求是否成功
+            resurl.raise_for_status()  # Check if the request is successful
             with open(data_item['filename'] + '.wav', 'wb') as f:
                 f.write(resurl.content)
             self.convert_to_wav(data_item['filename'] + ".wav", data_item['filename'])

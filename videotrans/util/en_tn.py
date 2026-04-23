@@ -1,5 +1,5 @@
-# 本代码复制自 https://github.com/OpenDocCN/python-code-anls/blob/master/docs/hf-tfm/models----clvp----number_normalizer.py.md
-# 以下为原文件所附带版权声明
+# This code is copied from https://github.com/OpenDocCN/python-code-anls/blob/master/docs/hf-tfm/models----clvp----number_normalizer.py.md
+# The following is the copyright statement attached to the original document
 #
 # coding=utf-8
 # Copyright 2023 The HuggingFace Inc. team.
@@ -73,56 +73,56 @@ class EnglishNormalizer:
         trillion, nine hundred ninety-nine billion, nine hundred ninety-nine million, nine hundred ninety-nine
         thousand, nine hundred ninety-nine'" or `number_to_words(999_999_999_999_999_999)`.
         """
-        # 如果输入的数字为0，返回字符串 "zero"
+        # If the input number is 0, return the string "zero"
         if num == 0:
             return "zero"
-        # 如果输入的数字小于0，返回负数的英文表示，递归调用自身处理绝对值
+        # If the input number is less than 0, return the English representation of the negative number and call itself recursively to process the absolute value
         elif num < 0:
             return "minus " + self.number_to_words(abs(num))
-        # 处理0到9之间的数字，直接返回对应的英文表示
+        # Process numbers between 0 and 9 and directly return the corresponding English representation
         elif num < 10:
             return self.ones[num]
-        # 处理10到19之间的数字，直接返回对应的英文表示
+        # Process numbers between 10 and 19 and directly return the corresponding English representation
         elif num < 20:
             return self.teens[num - 10]
-        # 处理20到99之间的数字，分解为十位和个位，递归调用自身处理个位
+        # Process numbers between 20 and 99, decompose them into tens and ones digits, and recursively call itself to process the ones digits
         elif num < 100:
             return self.tens[num // 10] + ("-" + self.number_to_words(num % 10) if num % 10 != 0 else "")
-        # 处理100到999之间的数字，分解为百位和剩余部分，递归调用自身处理剩余部分
+        # Process numbers between 100 and 999, decompose them into hundreds and the remaining part, and call itself recursively to process the remaining part
         elif num < 1000:
             return (
                     self.ones[num // 100] + " hundred" + (
                 " " + self.number_to_words(num % 100) if num % 100 != 0 else "")
             )
-        # 处理1000到999999之间的数字，分解为千位和剩余部分，递归调用自身处理剩余部分
+        # Process numbers between 1000 and 999999, decompose them into thousands and the remaining part, and call itself recursively to process the remaining part
         elif num < 1_000_000:
             return (
                     self.number_to_words(num // 1000)
                     + " thousand"
                     + (", " + self.number_to_words(num % 1000) if num % 1000 != 0 else "")
             )
-        # 处理1000000到999999999之间的数字，分解为百万位和剩余部分，递归调用自身处理剩余部分
+        # Process numbers between 1000000 and 999999999, decompose them into millions of digits and the remaining part, and call itself recursively to process the remaining part
         elif num < 1_000_000_000:
             return (
                     self.number_to_words(num // 1_000_000)
                     + " million"
                     + (", " + self.number_to_words(num % 1_000_000) if num % 1_000_000 != 0 else "")
             )
-        # 处理1000000000到999999999999之间的数字，分解为十亿位和剩余部分，递归调用自身处理剩余部分
+        # Process numbers between 1000000000 and 999999999999, decompose them into billions of digits and the remaining parts, and call itself recursively to process the remaining parts
         elif num < 1_000_000_000_000:
             return (
                     self.number_to_words(num // 1_000_000_000)
                     + " billion"
                     + (", " + self.number_to_words(num % 1_000_000_000) if num % 1_000_000_000 != 0 else "")
             )
-        # 处理1000000000000到999999999999999之间的数字，分解为万亿位和剩余部分，递归调用自身处理剩余部分
+        # Process numbers between 1000000000000 and 999999999999999, decompose them into trillions of digits and the remaining parts, and call itself recursively to process the remaining parts
         elif num < 1_000_000_000_000_000:
             return (
                     self.number_to_words(num // 1_000_000_000_000)
                     + " trillion"
                     + (", " + self.number_to_words(num % 1_000_000_000_000) if num % 1_000_000_000_000 != 0 else "")
             )
-        # 处理1000000000000000到999999999999999999之间的数字，分解为千万亿位和剩余部分，递归调用自身处理剩余部分
+        # Process numbers between 1000000000000000 and 9999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999.
         elif num < 1_000_000_000_000_000_000:
             return (
                     self.number_to_words(num // 1_000_000_000_000_000)
@@ -133,7 +133,7 @@ class EnglishNormalizer:
                         else ""
                     )
             )
-        # 处理超出范围的数字，返回字符串 "number out of range"
+        # Process numbers out of range and return the string "number out of range"
         else:
             return "number out of range"
 
@@ -141,24 +141,24 @@ class EnglishNormalizer:
         """
         Converts unicode to ascii
         """
-        # 将Unicode文本转换为ASCII编码，忽略非ASCII字符
+        # Convert Unicode text to ASCII encoding, ignoring non-ASCII characters
         return text.encode("ascii", "ignore").decode("utf-8")
 
     def _expand_dollars(self, m: str) -> str:
         """
         This method is used to expand numerical dollar values into spoken words.
         """
-        # 匹配到的数字字符串，即货币值
+        # Matched numeric string, that is, currency value
         match = m.group(1)
-        # 将货币值按小数点分割为整数部分和小数部分
+        # Split the currency value into an integer part and a decimal part according to the decimal point
         parts = match.split(".")
         if len(parts) > 2:
-            return match + " dollars"  # 如果小数点超过一个，返回原始字符串加上 " dollars" 表示异常格式
+            return match + " dollars"  # If there are more than one decimal point, return the original string plus "dollars" to indicate an abnormal format
 
-        # 解析整数部分和小数部分
+        # Parse the integer part and decimal part
         dollars = int(parts[0]) if parts[0] else 0
         cents = int(parts[1]) if len(parts) > 1 and parts[1] else 0
-        # 根据货币值的整数部分和小数部分，构造成对应的英文表达形式
+        # According to the integer part and decimal part of the currency value, construct the corresponding English expression form
         if dollars and cents:
             dollar_unit = "dollar" if dollars == 1 else "dollars"
             cent_unit = "cent" if cents == 1 else "cents"
@@ -176,31 +176,31 @@ class EnglishNormalizer:
         """
         This method is used to remove commas from sentences.
         """
-        # 去除输入字符串中的逗号
+        # Remove commas from input string
         return m.group(1).replace(",", "")
 
     def _expand_decimal_point(self, m: str) -> str:
         """
         This method is used to expand '.' into spoken word ' point '.
         """
-        # 将输入字符串中的点号 '.' 替换为单词 " point "
+        # Replace the period '.' in the input string with the word " point "
         return m.group(1).replace(".", " point ")
 
     def _expand_ordinal(self, num: str) -> str:
         """
         This method is used to expand ordinals such as '1st', '2nd' into spoken words.
         """
-        # 定义英文序数词的后缀映射表
+        # Define the suffix mapping table for English ordinal words
         ordinal_suffixes = {1: "st", 2: "nd", 3: "rd"}
 
-        # 提取序数词的数字部分并转换为整数
+        # Extract the numeric part of the ordinal word and convert it to an integer
         num = int(num.group(0)[:-2])
-        # 根据序数的不同情况选择正确的后缀
+        #Choose the correct suffix according to different situations of ordinal numbers
         if 10 <= num % 100 <= 20:
             suffix = "th"
         else:
             suffix = ordinal_suffixes.get(num % 10, "th")
-        # 将整数转换为对应的英文序数词形式并添加后缀
+        # Convert the integer to the corresponding English ordinal word form and add a suffix
         return self.number_to_words(num) + suffix
 
     def _expand_number(self, m: str) -> str:
@@ -209,10 +209,10 @@ class EnglishNormalizer:
         link :
         https://github.com/neonbjb/tortoise-tts/blob/4003544b6ff4b68c09856e04d3eff9da26d023c2/tortoise/utils/tokenizer.py#L86)
         """
-        # 提取匹配到的数字字符串并转换为整数
+        # Extract the matched numeric string and convert it to an integer
         num = int(m.group(0))
 
-        # 如果数字在 1000 到 3000 之间，按特定规则进行英文数字的扩展
+        # If the number is between 1000 and 3000, expand the English numbers according to specific rules
         if 1000 < num < 3000:
             if num == 2000:
                 return "two thousand"
@@ -225,50 +225,50 @@ class EnglishNormalizer:
         else:
             return self.number_to_words(num)
 
-    # 此方法用于规范化文本中的数字，如将数字转换为单词，移除逗号等操作。
+    # This method is used to normalize numbers in text, such as converting numbers to words, removing commas, etc.
     def normalize_numbers(self, text: str) -> str:
-        # 使用正则表达式替换匹配的数字和逗号，调用 self._remove_commas 方法
+        # Use regular expressions to replace matching numbers and commas and call the self._remove_commas method
         text = re.sub(re.compile(r"([0-9][0-9\,]+[0-9])"), self._remove_commas, text)
-        # 替换匹配的英镑金额为其单词表示形式
+        # Replace matching pound amounts with their word representations
         text = re.sub(re.compile(r"£([0-9\,]*[0-9]+)"), r"\1 pounds", text)
-        # 替换匹配的美元金额为其完整的金额表达形式，调用 self._expand_dollars 方法
+        # Replace the matching dollar amount with its complete dollar amount expression and call the self._expand_dollars method
         text = re.sub(re.compile(r"\$([0-9\.\,]*[0-9]+)"), self._expand_dollars, text)
-        # 替换匹配的小数形式为其完整的数值表达形式，调用 self._expand_decimal_point 方法
+        # Replace the matching decimal form with its complete numerical expression and call the self._expand_decimal_point method
         text = re.sub(re.compile(r"([0-9]+\.[0-9]+)"), self._expand_decimal_point, text)
-        # 替换匹配的序数词（如1st、2nd）为其完整的序数词形式，调用 self._expand_ordinal 方法
+        # Replace the matching ordinal word (such as 1st, 2nd) with its complete ordinal word form and call the self._expand_ordinal method
         text = re.sub(re.compile(r"[0-9]+(st|nd|rd|th)"), self._expand_ordinal, text)
-        # 替换匹配的数字为其完整的数值表达形式，调用 self._expand_number 方法
+        # Replace the matching number with its complete numerical expression and call the self._expand_number method
         text = re.sub(re.compile(r"[0-9]+"), self._expand_number, text)
-        # 返回规范化后的文本
+        # Return the normalized text
         return text
 
-    # 扩展缩写词
+    # Expand abbreviations
     def expand_abbreviations(self, text: str) -> str:
-        # 遍历缩写词及其对应的替换规则，使用正则表达式进行替换
+        # Traverse abbreviations and their corresponding replacement rules, and use regular expressions to replace them.
         for regex, replacement in self._abbreviations:
             text = re.sub(regex, replacement, text)
-        # 返回扩展后的文本
+        # Return the expanded text
         return text
 
-    # 去除多余的空白字符
+    # Remove extra whitespace characters
     def collapse_whitespace(self, text: str) -> str:
-        # 使用正则表达式将多个连续的空白字符替换为一个空格
+        # Use regular expressions to replace multiple consecutive whitespace characters with one space
         return re.sub(re.compile(r"\s+"), " ", text)
 
-    # 对象可调用方法，将文本转换为 ASCII 码，将数字转换为完整形式，并扩展缩写词
+    # Object callable methods to convert text to ASCII, convert numbers to full form, and expand abbreviations
     def __call__(self, text):
-        # 将文本转换为 ASCII 码表示形式
+        # Convert text to ASCII representation
         text = self.convert_to_ascii(text)
-        # 将文本转换为小写形式
+        #Convert text to lowercase
         text = text.lower()
-        # 规范化文本中的数字
+        # Normalize numbers in text
         text = self.normalize_numbers(text)
-        # 扩展文本中的缩写词
+        # Expand abbreviations in text
         text = self.expand_abbreviations(text)
-        # 去除文本中的多余空白字符
+        # Remove extra whitespace characters from text
         text = self.collapse_whitespace(text)
-        # 移除文本中的双引号
+        # Remove double quotes from text
         text = text.replace('"', "")
 
-        # 返回处理后的文本
+        # Return the processed text
         return text

@@ -12,42 +12,40 @@ from videotrans.task._base import BaseTask
 
 from videotrans.util import tools
 
-"""
-仅语音识别
-"""
+'\nVoice recognition only\n'
 
 
 @dataclass
 class SpeechToText(BaseTask):
-    # 识别后输出的字幕格式，srt txt 等
+    # The subtitle format output after recognition, srt txt, etc.
     out_format: str = field(init=True, default='srt')
-    # 在这个子类中，shoud_recogn 总是 True。
+    # In this subclass, shoud_recognin is always True.
     shoud_recogn: bool = field(default=True, init=False)
-    # 是否需要将生成的字幕复制到原始视频所在目录下，并重命名为视频同名，以方便视频自动加载软字幕
+    # Do you need to copy the generated subtitles to the directory where the original video is located and rename it to the same name as the video to facilitate the video to automatically load soft subtitles?
     copysrt_rawvideo: bool = field(default=False, init=True)
-    # 存放原始语言字幕
+    # Store original language subtitles
     source_srt_list: List = field(default_factory=list)
 
     def __post_init__(self):
         super().__post_init__()
-        # -1=不启用说话人，0=启用并且不限制说话人数量，>0+1是最大说话人数量
+        # -1=Do not enable speakers, 0=Enable and do not limit the number of speakers, >0+1 is the maximum number of speakers
         self.max_speakers=self.cfg.nums_diariz if self.cfg.enable_diariz else -1
         if self.max_speakers>0:
             self.max_speakers+=1
-        # 存放目标文件夹
+        # Store the target folder
         if not self.cfg.target_dir:
             self.cfg.target_dir = HOME_DIR + f"/recogn"
-        # 转录后的目标字幕文件，先统一转为srt，然后再使用ffmpeg转为其他格式字幕
+        # The transcribed target subtitle files are first converted to srt, and then converted to other format subtitles using ffmpeg.
         self.cfg.target_sub = self.cfg.target_dir + '/' + self.cfg.noextname + '.srt'
-        # 临时文件夹
+        # Temporary folder
         self.cfg.cache_folder = TEMP_DIR + f'/{self.uuid}'
         Path(self.cfg.target_dir).mkdir(parents=True, exist_ok=True)
         Path(self.cfg.cache_folder).mkdir(parents=True, exist_ok=True)
-        # 处理为 16k 的wav单通道音频，供模型识别用
+        # Process 16k wav single-channel audio for model recognition
         self.cfg.shibie_audio = self.cfg.cache_folder + f'/{self.cfg.noextname}-{time.time()}.wav'
         self._signal(text=tr("Speech Recognition to Word Processing"))
 
-    # 预先处理
+    # Preprocessing
     def prepare(self):
         if self._exit():
             return
@@ -56,12 +54,12 @@ class SpeechToText(BaseTask):
     def recogn(self):
         if self._exit(): return
         while 1:
-            # 尚未生成
+            # Not yet generated
             if Path(self.cfg.shibie_audio).exists():
                 break
             time.sleep(0.5)
         try:
-            # 需要降噪
+            #Need noise reduction
             if self.cfg.remove_noise:
                 title=tr("Starting to process speech noise reduction, which may take a long time, please be patient")
                 _remove_noise_wav=f"{self.cfg.cache_folder}/remove_noise.wav"
@@ -74,7 +72,7 @@ class SpeechToText(BaseTask):
                         "output_file":_remove_noise_wav,
                         "is_cuda":self.cfg.is_cuda
                     }
-                    # 静默失败，不处理
+                    # Silent failure, no processing
                     try:
                         _rs = self._new_process(callback=remove_noise,title=title,kwargs=kw)
                         if _rs:
@@ -87,7 +85,7 @@ class SpeechToText(BaseTask):
                     shutil.copy2(_cache_noise_wav,_remove_noise_wav)
                     self.cfg.shibie_audio=_remove_noise_wav
             if self._exit(): return
-            # faster_xxl.exe 单独处理
+            # faster_xxl.exe processed separately
             if self.cfg.recogn_type == Faster_Whisper_XXL:
                 cmd = [
                     settings.get('Faster_Whisper_XXL', ''),
@@ -155,7 +153,7 @@ class SpeechToText(BaseTask):
                 self.source_srt_list = tools.get_subtitle_from_srt(self.cfg.target_sub, is_file=True)
                 # return
             else:
-                # 其他识别渠道
+                # Other identification channels
                 raw_subtitles = run(
                     recogn_type=self.cfg.recogn_type,
                     uuid=self.uuid,
@@ -175,7 +173,7 @@ class SpeechToText(BaseTask):
             if self._exit() or self.cfg.detect_language == 'auto': return
             
             
-            # 中英恢复标点符号
+            # Restore punctuation marks in Chinese and English
             if self.cfg.fix_punc and self.cfg.detect_language[:2] in ['zh','en']:
                 tools.check_and_down_ms(model_id='iic/punc_ct-transformer_cn-en-common-vocab471067-large',callback=self._process_callback)
                 text_dict={f'{it["line"]}':re.sub(r'[,.?!，。？！]',' ',it["text"]) for it in self.source_srt_list}
@@ -194,17 +192,17 @@ class SpeechToText(BaseTask):
 
             
             # whisperx-api
-            # openairecogn并且模型是gpt-4o-transcribe-diarize
-            # funasr并且模型是paraformer-zh
+            # openairecogn and the model is gpt-4o-transcribe-diarize
+            # funasr and the model is paraformer-zh
             # deepgram
-            # 以上这些本身已有说话人识别，如果以有说话人，就不再重新断句
+            # The above have already been identified by speakers. If there is a speaker, the sentence will not be re-segmented.
             self._signal(text=Path(self.cfg.target_sub).read_text(encoding='utf-8'), type='replace_subtitle')
             if Path(self.cfg.cache_folder+"/speaker.json").exists():
                 return
 
 
             if self.cfg.rephrase == 1:
-                # LLM重新断句
+                # LLM re-segmentation
                 try:
                     from videotrans.translator._chatgpt import ChatGPT
 
@@ -218,7 +216,7 @@ class SpeechToText(BaseTask):
                         raise
                 except Exception as e:
                     self._signal(text=tr("Re-segmenting Error"))
-                    logger.warning(f"重新断句失败[except]，已恢复原样 {e}")
+                    logger.warning(f"Re-segmentation failed [except] and has been restored to its original state{e}")
         except Exception:
             raise
 
@@ -231,19 +229,19 @@ class SpeechToText(BaseTask):
         speaker_type=settings.get('speaker_type','built')
         hf_token= settings.get('hf_token')
         if speaker_type=='built' and self.cfg.detect_language[:2] not in ['zh','en']:
-            logger.error(f'当前选择 built 说话人分离模型，但不支持当前语言:{self.cfg.detect_language}')
+            logger.error(f'The built speaker separation model is currently selected, but is not supported for the current language:{self.cfg.detect_language}')
             return
         if speaker_type in ['pyannote','reverb'] and not hf_token:
-            logger.error(f'当前选择 pyannote 说话人分离模型，但未设置 huggingface.co 的token: {self.cfg.detect_language}')
+            logger.error(f'The pyannote speaker separation model is currently selected, but the token of huggingface.co is not set:{self.cfg.detect_language}')
             return
         if speaker_type in ['pyannote','reverb']:
-            # 判断是否可访问 huggingface.co
-            # 先测试能否连接 huggingface.co, 中国大陆地区不可访问，除非使用VPN
+            # Determine whether huggingface.co is accessible
+            # First test whether you can connect to huggingface.co. It is not accessible in mainland China unless you use a VPN.
             try:
                 import requests
                 requests.head('https://huggingface.co',timeout=5)
             except Exception:
-                logger.error(f'当前选择 {speaker_type} 说话人分离模型，但无法连接到 https://huggingface.co,可能会失败')
+                logger.error(f'Current selection{speaker_type} Speaker separation model, but cannot connect to https://huggingface.co, may fail')
 
         self.precent += 3
         title=tr(f'Begin separating the speakers')+f':{speaker_type}'
@@ -272,13 +270,13 @@ class SpeechToText(BaseTask):
         elif speaker_type=='reverb':
             from videotrans.process.prepare_audio import reverb_speakers as _run_speakers
         else:
-            logger.error(f'当前所选说话人分离模型不支持:{speaker_type=}')
+            logger.error(f'The currently selected speaker separation model does not support:{speaker_type=}')
             return
         try:
             if speaker_type in ['pyannote','reverb']:
                 self._signal(text='Downloading speakers models')
                 from huggingface_hub import snapshot_download
-                print(f'下载 token: {speaker_type},{hf_token=}')
+                print(f'Download token:{speaker_type},{hf_token=}')
                 snapshot_download(
                     repo_id="pyannote/speaker-diarization-3.1" if speaker_type == 'pyannote' else "Revai/reverb-diarization-v1",
                     token=hf_token
@@ -295,7 +293,7 @@ class SpeechToText(BaseTask):
     def task_done(self):
         if self._exit(): return
         if self.cfg.detect_language and self.cfg.detect_language !='auto':
-            # 处理换行
+            # Handle newlines
             maxlen = int(
             settings.get('cjk_len',15) if self.cfg.detect_language[:2] in ["zh", "ja", "jp", "ko", 'yu'] else
             settings.get('other_len',60))

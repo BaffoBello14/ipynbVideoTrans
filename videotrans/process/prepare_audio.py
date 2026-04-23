@@ -1,7 +1,7 @@
-# 语音识别前进行各项处理，单独进程实现
-# 返回元组
-# 失败：第一个值为 False，第二个值存储失败原因
-# 成功，第一个返回数据，不需要数据时返回True，第二个值为None
+# Perform various processing before speech recognition and implement it in a separate process
+# Return tuple
+# Failure: the first value is False, the second value stores the failure reason
+# If successful, the first one returns data. If no data is needed, it returns True. The second value is None.
 
 import traceback
 from videotrans.configure.config import ROOT_DIR,logger,TEMP_ROOT
@@ -14,11 +14,11 @@ def _write_log(file=None, msg=None, type='logs'):
     try:
         Path(file).write_text(json.dumps({"text": msg, "type": type}), encoding='utf-8')
     except Exception as e:
-        logger.exception(f'写入新进程日志时出错', exc_info=True)
+        logger.exception(f'Error writing new process log', exc_info=True)
 
 
-# 1. 分离背景声和人声 https://k2-fsa.github.io/sherpa/onnx/source-separation/models.html#uvr
-# 仅使用cpu，不使用gpu
+# 1. Separate background sound and vocals https://k2-fsa.github.io/sherpa/onnx/source-separation/models.html#uvr
+# Only use cpu, not gpu
 def vocal_bgm(*, input_file, vocal_file, instr_file,  logs_file=None, is_cuda=False,uvr_models="UVR-MDX-NET-Inst_HQ_4"):
     """
     UVR for source separation.
@@ -90,7 +90,7 @@ def vocal_bgm(*, input_file, vocal_file, instr_file,  logs_file=None, is_cuda=Fa
         return True, None
     except Exception as e:
         msg = traceback.format_exc()
-        logger.exception(f"人声背景声分离失败:{msg}", exc_info=True)
+        logger.exception(f"Vocal background sound separation failed:{msg}", exc_info=True)
         return False, msg
     finally:
         try:
@@ -103,7 +103,7 @@ def vocal_bgm(*, input_file, vocal_file, instr_file,  logs_file=None, is_cuda=Fa
             pass
 
 
-# 2. 降噪 https://modelscope.cn/models/iic/speech_frcrn_ans_cirm_16k
+# 2. Noise reduction https://modelscope.cn/models/iic/speech_frcrn_ans_cirm_16k
 def remove_noise(*, input_file, output_file,  is_cuda=False, logs_file=None, device_index=0):
     import torch, os, shutil, time
     from pathlib import Path
@@ -116,7 +116,7 @@ def remove_noise(*, input_file, output_file,  is_cuda=False, logs_file=None, dev
     else:
         device = f"cuda:{device_index}" if is_cuda else "cpu"
     _st = time.time()
-    logger.info('开始语音降噪')
+    logger.info('Start voice noise reduction')
     ans = None
     result = None
     tmp_name = Path(output_file).parent.as_posix() + f'/noise-{time.time()}.wav'
@@ -131,11 +131,11 @@ def remove_noise(*, input_file, output_file,  is_cuda=False, logs_file=None, dev
         )
         result = ans(input_file, output_path=tmp_name, disable_pbar=True)
         tools.runffmpeg(['-y', '-i', tmp_name, '-af', "volume=1.5", output_file])
-        logger.info(f'降噪成功完成，耗时:{int(time.time() - _st)}s')
+        logger.info(f'Noise reduction was successfully completed and took:{int(time.time() - _st)}s')
         return output_file, None
     except Exception as e:
         msg = traceback.format_exc()
-        logger.exception(f'降噪失败:{msg}', exc_info=True)
+        logger.exception(f'Noise reduction failed:{msg}', exc_info=True)
         return False, msg
     finally:
         try:
@@ -149,7 +149,7 @@ def remove_noise(*, input_file, output_file,  is_cuda=False, logs_file=None, dev
             pass
 
 
-# 3. 恢复标点 https://modelscope.cn/models/iic/punc_ct-transformer_cn-en-common-vocab471067-large
+# 3. Restore punctuation https://modelscope.cn/models/iic/punc_ct-transformer_cn-en-common-vocab471067-large
 def fix_punc(*, text_dict,  is_cuda=False, logs_file=None, device_index=0):
     import torch, os, shutil, time
     from pathlib import Path
@@ -165,7 +165,7 @@ def fix_punc(*, text_dict,  is_cuda=False, logs_file=None, device_index=0):
 
     try:
         _st = time.time()
-        logger.debug(f'开始标点恢复')
+        logger.debug(f'Start punctuation recovery')
         ans = pipeline(
             task=Tasks.punctuation,
             model='iic/punc_ct-transformer_cn-en-common-vocab471067-large',
@@ -181,11 +181,11 @@ def fix_punc(*, text_dict,  is_cuda=False, logs_file=None, device_index=0):
         result = ans(tmp_name, disable_pbar=True)
         for it in result:
             text_dict[it["key"]] = it['text']
-        logger.debug(f'标点恢复完成，耗时:{int(time.time() - _st)}s')
+        logger.debug(f'Punctuation recovery is completed and takes:{int(time.time() - _st)}s')
         return text_dict, None
     except Exception as e:
         msg = traceback.format_exc()
-        logger.exception(f'恢复标点失败:{msg}', exc_info=True)
+        logger.exception(f'Failed to restore punctuation:{msg}', exc_info=True)
         return False, msg
     finally:
         try:
@@ -199,7 +199,7 @@ def fix_punc(*, text_dict,  is_cuda=False, logs_file=None, device_index=0):
             pass
 
 
-# 4. ali_CAM阿里 说话人分离  https://modelscope.cn/models/iic/speech_campplus_speaker-diarization_common/files
+# 4. ali_CAM Ali Speaker Diarization https://modelscope.cn/models/iic/speech_campplus_speaker-diarization_common/files
 def cam_speakers(*, input_file, subtitles, num_speakers=-1,  is_cuda=False, logs_file=None,
                  device_index=0):
     import torch, os, shutil, time
@@ -210,7 +210,7 @@ def cam_speakers(*, input_file, subtitles, num_speakers=-1,  is_cuda=False, logs
     else:
         device = f"cuda:{device_index}" if is_cuda else "cpu"
     _st = time.time()
-    logger.debug(f'开始说话人分离:使用阿里cam++模型')
+    logger.debug(f'Start speaker separation: using Alibaba cam++ model')
     result = None
     ans = None
     try:
@@ -222,12 +222,12 @@ def cam_speakers(*, input_file, subtitles, num_speakers=-1,  is_cuda=False, logs
             disable_log=True,
             device=device
         )
-        # 如果有先验信息，输入实际的说话人数，会得到更准确的预测结果
-        # result 类似 {'text': [[0.0, 2.04, 0], [4.18, 24.97, 0], [25.33, 81.0, 0], [81.0, 97.55, 1], [99.49, 141.11, 0], [142.41, 155.93, 0], [158.28, 190.34, 0]]}
+        # If there is prior information, input the actual number of speakers, and you will get more accurate prediction results.
+        # result is similar to {'text': [[0.0, 2.04, 0], [4.18, 24.97, 0], [25.33, 81.0, 0], [81.0, 97.55, 1], [99.49, 141.11, 0], [142.41, 155.93, 0], [158.28, 190.34, 0]]}
         result = ans(input_file, oracle_num=num_speakers, ignore_errors=True) if num_speakers > 1 else ans(input_file,
                                                                                                            ignore_errors=True)
-        # 整理为 [ [[start_ms,end_ms],"spk\d"],... ]
-        logger.debug(f'说话人分离原始返回结果:{result=}')
+        # Organize into [[[start_ms,end_ms],"spk\d"],... ]
+        logger.debug(f'Speaker separation original return results:{result=}')
         diarizations = [[[int(it[0] * 1000), int(it[1] * 1000)], f'spk{int(it[2])}'] for it in result['text']]
         output = []
         for sub in subtitles:
@@ -276,11 +276,11 @@ def cam_speakers(*, input_file, subtitles, num_speakers=-1,  is_cuda=False, logs
                 else:
                     output.append("spk0")
 
-        logger.debug(f'说话人分离成功结束,识别出 {len(set(output))} 个说话人,耗时:{int(time.time() - _st)}s')
+        logger.debug(f'Speaker separation ended successfully, identifying{len(set(output))} speakers, time:{int(time.time() - _st)}s')
         return output, None
     except Exception as e:
         msg = traceback.format_exc()
-        logger.exception(f'说话人分离失败:{msg}', exc_info=True)
+        logger.exception(f'Speaker separation failed:{msg}', exc_info=True)
         return False, msg
     finally:
         try:
@@ -294,7 +294,7 @@ def cam_speakers(*, input_file, subtitles, num_speakers=-1,  is_cuda=False, logs
             pass
 
 
-# 4. 说话人分离，pyannote https://huggingface.co/pyannote/speaker-diarization-3.0
+# 4. Speaker separation, pyannote https://huggingface.co/pyannote/speaker-diarization-3.0
 def pyannote_speakers(*, input_file, subtitles, num_speakers=-1,  is_cuda=False, logs_file=None,
                       device_index=0):
     import torch, pyannote.audio, torchaudio, os, shutil, time
@@ -322,7 +322,7 @@ def pyannote_speakers(*, input_file, subtitles, num_speakers=-1,  is_cuda=False,
             diarization = pipeline({"waveform": waveform, "sample_rate": sample_rate})
 
         output = []
-        # 获取的说话人数字id可能很乱，并非顺序增长，需要重新整理为0-n递增
+        # The obtained speaker numeric ID may be messy and does not increase sequentially. It needs to be rearranged into 0-n increments.
         speaker_list = set()
         for turn, _, speaker in diarization.itertracks(yield_label=True):
             speaker = speaker.replace('SPEAKER_', '')
@@ -330,19 +330,19 @@ def pyannote_speakers(*, input_file, subtitles, num_speakers=-1,  is_cuda=False,
             output.append([[int(turn.start * 1000), int(turn.end * 1000)], f'spk{speaker}'])
         speaker_list = sorted(list(speaker_list))
 
-        # 映射
+        # mapping
         spk_neworder_dict = {}
         for i, it in enumerate(speaker_list):
             spk_neworder_dict[it] = f'spk{i}'
-        logger.debug(f'原始说话人排序后：{speaker_list=}')
-        logger.debug(f'映射为新说话人标识：{spk_neworder_dict=}')
+        logger.debug(f'After sorting the original speakers:{speaker_list=}')
+        logger.debug(f'Map to new speaker ID:{spk_neworder_dict=}')
         for i, it in enumerate(output):
             output[i][1] = spk_neworder_dict.get(it[1], 'spk0')
         return output
 
     try:
         _st = time.time()
-        logger.debug(f'开始说话人分离,使用 pyannote/speaker-diarization-3.1 模型')
+        logger.debug(f'Start speaker separation, using pyannote/speaker-diarization-3.1 model')
         diarizations = _get_diariz()
         if not diarizations:
             return False, "Unkonw error"
@@ -394,11 +394,11 @@ def pyannote_speakers(*, input_file, subtitles, num_speakers=-1,  is_cuda=False,
                 else:
                     output.append("spk0")
 
-        logger.debug(f'说话人分离成功结束,识别出个 {len(set(output))} 说话人,耗时:{int(time.time() - _st)}s')
+        logger.debug(f'Speaker separation ended successfully and the individual was identified{len(set(output))} Speaker, time spent:{int(time.time() - _st)}s')
         return output, None
     except Exception as e:
         msg = traceback.format_exc()
-        logger.exception(f'说话人分离出错:{msg}', exc_info=True)
+        logger.exception(f'Speaker separation error:{msg}', exc_info=True)
         return False, msg
     finally:
         try:
@@ -410,7 +410,7 @@ def pyannote_speakers(*, input_file, subtitles, num_speakers=-1,  is_cuda=False,
             pass
 
 
-# 4. 说话人分离 reverb  https://huggingface.co/Revai/reverb-diarization-v1
+# 4. Speaker separation reverb https://huggingface.co/Revai/reverb-diarization-v1
 def reverb_speakers(*, input_file, subtitles, num_speakers=-1,  is_cuda=False, logs_file=None,
                     device_index=0):
     import torch, pyannote.audio, torchaudio, os, shutil, time
@@ -438,7 +438,7 @@ def reverb_speakers(*, input_file, subtitles, num_speakers=-1,  is_cuda=False, l
             diarization = pipeline({"waveform": waveform, "sample_rate": sample_rate})
 
         output = []
-        # 获取的说话人数字id可能很乱，并非顺序增长，需要重新整理为0-n递增
+        # The obtained speaker numeric ID may be messy and does not increase sequentially. It needs to be rearranged into 0-n increments.
         speaker_list = set()
         for turn, _, speaker in diarization.itertracks(yield_label=True):
             speaker = speaker.replace('SPEAKER_', '')
@@ -446,12 +446,12 @@ def reverb_speakers(*, input_file, subtitles, num_speakers=-1,  is_cuda=False, l
             output.append([[int(turn.start * 1000), int(turn.end * 1000)], f'spk{speaker}'])
         speaker_list = sorted(list(speaker_list))
 
-        # 映射
+        # mapping
         spk_neworder_dict = {}
         for i, it in enumerate(speaker_list):
             spk_neworder_dict[it] = f'spk{i}'
-        logger.debug(f'原始说话人排序后：{speaker_list=}')
-        logger.debug(f'映射为新说话人标识：{spk_neworder_dict=}')
+        logger.debug(f'After sorting the original speakers:{speaker_list=}')
+        logger.debug(f'Map to new speaker ID:{spk_neworder_dict=}')
 
         for i, it in enumerate(output):
             output[i][1] = spk_neworder_dict.get(it[1], 'spk0')
@@ -459,7 +459,7 @@ def reverb_speakers(*, input_file, subtitles, num_speakers=-1,  is_cuda=False, l
 
     try:
         _st = time.time()
-        logger.debug(f'开始说话人分离,使用模型 Revai/reverb-diarization-v1')
+        logger.debug(f'Start speaker separation, using model Revai/reverb-diarization-v1')
         diarizations = _get_diariz()
         if not diarizations:
             return False, "Unknwo error"
@@ -511,11 +511,11 @@ def reverb_speakers(*, input_file, subtitles, num_speakers=-1,  is_cuda=False, l
                 else:
                     output.append("spk0")
 
-        logger.debug(f'说话人分离成功结束,识别出个 {len(set(output))} 说话人,耗时:{int(time.time() - _st)}s')
+        logger.debug(f'Speaker separation ended successfully and the individual was identified{len(set(output))} Speaker, time spent:{int(time.time() - _st)}s')
         return output, None
     except Exception as e:
         msg = traceback.format_exc()
-        logger.exception(f'说话人分离出错:{msg}', exc_info=True)
+        logger.exception(f'Speaker separation error:{msg}', exc_info=True)
         return False, msg
     finally:
         try:
@@ -527,8 +527,8 @@ def reverb_speakers(*, input_file, subtitles, num_speakers=-1,  is_cuda=False, l
             pass
 
 
-# 内置中英文说话人分离模型
-# 仅使用cpu，不使用gpu
+# Built-in Chinese and English speaker separation model
+# Only use cpu, not gpu
 def built_speakers(*, input_file, subtitles, num_speakers=-1, language="zh",  logs_file=None,
                    is_cuda=False):
     from pathlib import Path
@@ -608,19 +608,19 @@ def built_speakers(*, input_file, subtitles, num_speakers=-1, language="zh",  lo
             result = sd.process(audio).sort_by_start_time()
 
         output = []
-        # 获取的说话人数字id可能很乱，并非顺序增长，需要重新整理为0-n递增
+        # The obtained speaker numeric ID may be messy and does not increase sequentially. It needs to be rearranged into 0-n increments.
         speaker_list = set()
         for r in result:
             speaker_list.add(f'spk{r.speaker}')
             output.append([[int(r.start * 1000), int(r.end * 1000)], f'spk{r.speaker}'])
         speaker_list = sorted(list(speaker_list))
 
-        # 映射
+        # mapping
         spk_neworder_dict = {}
         for i, it in enumerate(speaker_list):
             spk_neworder_dict[it] = f'spk{i}'
-        logger.debug(f'原始说话人排序后：{speaker_list=}')
-        logger.debug(f'映射为新说话人标识：{spk_neworder_dict=}')
+        logger.debug(f'After sorting the original speakers:{speaker_list=}')
+        logger.debug(f'Map to new speaker ID:{spk_neworder_dict=}')
 
         for i, it in enumerate(output):
             output[i][1] = spk_neworder_dict.get(it[1], 'spk0')
@@ -629,8 +629,8 @@ def built_speakers(*, input_file, subtitles, num_speakers=-1, language="zh",  lo
 
     try:
         _st = time.time()
-        logger.info(f'开始说话人分离,使用内置模型 {language=},{num_speakers=}')
-        # 根据选择使用内置或 pyannote 方式
+        logger.info(f'Start speaker separation, using built-in model{language=},{num_speakers=}')
+        # Use built-in or pyannote methods according to choice
         diarizations = _get_diariz()
         if not diarizations:
             return False, 'Unknow error'
@@ -682,11 +682,11 @@ def built_speakers(*, input_file, subtitles, num_speakers=-1, language="zh",  lo
                 else:
                     output.append("spk0")
 
-        logger.debug(f'说话人分离成功结束,识别出个 {len(set(output))} 说话人,耗时：{int(time.time() - _st)}s')
+        logger.debug(f'Speaker separation ended successfully and the individual was identified{len(set(output))} Speaker, time consuming:{int(time.time() - _st)}s')
         return output, None
     except Exception as e:
         msg = traceback.format_exc()
-        logger.exception(f'分离说话人失败:{e}', exc_info=True)
+        logger.exception(f'Failed to detach speaker:{e}', exc_info=True)
         return False, msg
     finally:
         try:

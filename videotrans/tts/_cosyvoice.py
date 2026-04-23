@@ -58,16 +58,16 @@ class CosyVoice(BaseTTS):
             client = Client(self.api_url, ssl_verify=False)
         except Exception as e:
             raise StopRetry(str(e))
-        # 参考音频对应文本内容
+        # Refer to the text content corresponding to the audio
         prompt_text=data.get('ref_text','')
         print(f"{data['ref_wav']=}")
-        # 提示词，克隆时放入参考音频文本中
+        # Prompt word, put into the reference audio text when cloning
         instruct_text=params.get('cosyvoice_instruct_text','')
         if instruct_text:
             prompt_text=f'You are a helpful assistant.{instruct_text}<|endofprompt|>{prompt_text}'
         result = client.predict(
             tts_text=text,
-            mode_checkbox_group="3s极速复刻",
+            mode_checkbox_group='3s extremely fast reproduction',
             prompt_wav_upload=handle_file(data['ref_wav']),
             prompt_wav_record=handle_file(data['ref_wav']),
             prompt_text=prompt_text,
@@ -106,8 +106,8 @@ class CosyVoice(BaseTTS):
         if role not in rolelist:
             raise StopRetry(tr('The preset role {} was not found in the configuration',role))
         if role == 'clone':
-            # 克隆音色
-            # 原项目使用 clone_mul 跨语种克隆的方案，实际测试效果不如同语种，这地方修改成同语种克隆 /clone_eq
+            # clone sound
+            # The original project uses the clone_mul cross-language cloning solution. The actual test effect is not as good as the same language. This place is modified to the same language clone /clone_eq
             ref_wav_path = data_item.get("ref_wav",'')
             if not Path(ref_wav_path).exists():
                 raise StopRetry(tr('No reference audio {} exists',ref_wav_path))
@@ -123,22 +123,22 @@ class CosyVoice(BaseTTS):
             if not data['reference_audio']:
                 raise StopRetry(tr('Preset role {} is incorrectly configured, missing clone reference audio',role))
 
-            # 检查是否存在参考文本，以决定使用哪个克隆接口
+            # Check if reference text exists to decide which clone interface to use
             reference_text = role_info.get('reference_text', '').strip()
             if reference_text:
-                # 同时提供参考音频和文本，使用高质量同语种克隆
+                # Provide reference audio and text at the same time, using high-quality clones in the same language
                 data['reference_text'] = reference_text
                 api_url += '/clone_eq'
             else:
-                # 仅提供参考音频，使用跨语种克隆
+                # Only provide reference audio, use cross-language cloning
                 api_url += '/clone_mul'
 
-        logger.debug(f'请求数据：{api_url=},{data=}')
-        # 克隆声音
+        logger.debug(f'Request data:{api_url=},{data=}')
+        # clone sound
         response = requests.post(f"{api_url}", data=data,  timeout=3600)
         response.raise_for_status()
 
-        # 如果是WAV音频流，获取原始音频数据
+        # If it is a WAV audio stream, get the original audio data
         with open(data_item['filename'] + ".wav", 'wb') as f:
             f.write(response.content)
         time.sleep(1)
@@ -152,7 +152,7 @@ class CosyVoice(BaseTTS):
         if self._exit() or tools.vail_file(data_item['filename']):
             return
         
-        # 兼容之前的 cosyvoice-api 接口
+        # Compatible with the previous cozyvoice-api interface
         try:
             if ":9233" not in self.api_url:
                 self._item_task_cosyvoice2(data_item)

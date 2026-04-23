@@ -33,7 +33,7 @@ class DeepL(BaseTrans):
     def _item_task(self, data: Union[List[str], str]) -> str:
         if self._exit(): return
         text = ("\n".join(data)).strip()
-        # text可能是中文 英文 日文 越南语等任何一种语言，也可能text全部由特殊符号组成，键盘上可以打出来的所有特殊符号，如果全是符号，则返回原text
+        # The text may be Chinese, English, Japanese, Vietnamese, or any other language. It may also be composed entirely of special symbols. All special symbols that can be typed on the keyboard. If they are all symbols, return the original text.
         if not text or re.match(r'^[\s ~`!@#$%^&*()_+\-=\[\]{}\\|;,./?><:"\'，。、；‘’“”：《》？【】｛｝（）—！·￥…ー]+$', text):
             return text
 
@@ -57,5 +57,5 @@ class DeepL(BaseTrans):
             glossary=params.get('deepl_gid')
         )
 
-        logger.debug(f'[DeepL]返回:{result=}')
+        logger.debug(f'[DeepL] returns:{result=}')
         return result.text

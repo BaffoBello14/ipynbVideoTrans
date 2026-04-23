@@ -56,13 +56,13 @@ class TTSAPI(BaseTTS):
 
 
             res = self._apirequests(data_item['text'], role, speed, volume, pitch)
-            logger.debug(f'返回数据 {res["code"]=}')
+            logger.debug(f'Return data{res["code"]=}')
             if "code" not in res or "msg" not in res or res['code'] != 0:
                 raise RuntimeError(f'TTS-API:{res["msg"]}' )
 
             if 'data' not in res or not res['data']:
                 raise RuntimeError( tr("No valid audio address returned"))
-            # 返回的是音频url地址
+            # Returns the audio url address
             tmp_filename = data_item['filename'] + ".mp3"
             if isinstance(res['data'], str) and res['data'].startswith('http'):
                 url = res['data']
@@ -71,7 +71,7 @@ class TTSAPI(BaseTTS):
                 with open(tmp_filename, 'wb') as f:
                     f.write(res.content)
             elif isinstance(res['data'], str) and res['data'].startswith('data:audio'):
-                # 返回 base64数据
+                # Return base64 data
                 self._base64_to_audio(res['data'], tmp_filename)
             elif isinstance(res['data'], dict) and 'audio' in res['data']:
                 with open(tmp_filename, 'wb') as f:
@@ -97,7 +97,7 @@ class TTSAPI(BaseTTS):
             'Content-Type': 'application/x-www-form-urlencoded',
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36"
         }
-        logger.debug(f'发送数据 {data=}')
+        logger.debug(f'Send data{data=}')
         resraw = requests.post(f"{self.api_url}", data=data, verify=False, headers=headers)
         resraw.raise_for_status()
         return resraw.json()

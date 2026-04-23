@@ -20,7 +20,7 @@ class ChatTTS(BaseTTS):
 
     def __post_init__(self):
         super().__post_init__()
-        # 从配置中读取并处理 API URL
+        # Read and process API URL from configuration
         api_url = params.get('chattts_api','').strip().rstrip('/').lower()
         self.api_url = 'http://' + api_url.replace('http://', '').replace('/tts', '')
         self._add_internal_host_noproxy(self.api_url)
@@ -44,7 +44,7 @@ class ChatTTS(BaseTTS):
             logger.debug(f'chatTTS:{data=}')
             res = res.json()
             if res is None:
-                raise RuntimeError('ChatTTS端出错，请查看其控制台终端')
+                raise RuntimeError('An error occurred on the ChatTTS side, please check its console terminal')
 
             if "code" not in res or res['code'] != 0:
                 if "msg" in res:
