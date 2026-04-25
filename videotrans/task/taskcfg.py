@@ -52,6 +52,10 @@ class TaskCfgTTS(TaskCfgBase):
     voice_role: str=None  #voice character
     voice_autorate:bool=False #Whether audio is automatically accelerated
     video_autorate:bool=False #Whether the video automatically slows down
+    # When dubbing is shorter than the subtitle slot, optionally stretch audio (Rubber Band)
+    # up to this many extra milliseconds per clip, capped by stretch_short_max_ratio (e.g. 1.15).
+    stretch_short_max_ms: int = 0
+    stretch_short_max_ratio: float = 1.15
     remove_silent_mid:bool=False # Whether to remove the gaps between subtitles
     align_sub_audio:bool=True # Whether to force subtitles and sounds to be aligned
 

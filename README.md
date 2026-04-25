@@ -55,6 +55,12 @@ jupyter notebook pyvideotrans_notebook.ipynb
 | 9 | Standalone TTS from SRT |
 | 10 | Utilities (list voices, providers, inspect SRT, check GPU) |
 
+### Workflow tips
+
+- **Step-by-step:** run ASR → Translate → (optional) **edit** `TARGET_SRT` → TTS → assemble. In **Colab**, use the *Revisione traduzione* cells to copy the translated SRT from cell output, paste into the save cell, and re-run TTS without opening Drive.
+- **Short dubbing vs. long subtitle slots:** when `voice_autorate` is on, the backend can **mildly stretch** short clips (Rubber Band via `pyrubberband`) using `stretch_short_max_ms` and `stretch_short_max_ratio` on `TaskCfgVTT` / `TaskCfgTTS` (see the configuration cells in the notebooks). Install the Rubber Band system library where applicable; Colab installs `librubberband2` in the first setup cell.
+- **Higher-quality / custom voices:** Edge-TTS is the default. For **voice cloning** or engines such as **F5-TTS**, use the corresponding `TTS_TYPE` in `videotrans/tts/__init__.py` (often a **local Gradio** server plus `f5tts_url` / reference audio under `f5-tts/`). That path is heavier than the minimal Colab pip cell and is not enabled in the default notebook install.
+
 ---
 
 ## Configuration (Cell 2)
@@ -75,6 +81,10 @@ TTS_TYPE       = 0             # 0 = Edge-TTS (free)
 VOICE_ROLE     = "en-US-JennyNeural"
 
 SUBTITLE_TYPE  = 1             # 1 = hard (burned-in) subtitles
+
+# Optional: reduce trailing silence when TTS is shorter than the slot (needs pyrubberband)
+STRETCH_SHORT_MAX_MS    = 400
+STRETCH_SHORT_MAX_RATIO = 1.12
 ```
 
 ### API keys (optional, for cloud providers)
