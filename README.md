@@ -20,9 +20,11 @@
 
 | Tool | Notes |
 |------|-------|
-| Python 3.10.x | required (3.10 exactly, < 3.11) |
-| FFmpeg | `sudo apt install ffmpeg` / `brew install ffmpeg` |
+| Python | **3.10+** for a local Jupyter setup (many users stay on 3.10.x). **Google Colab** currently provides **Python 3.12.x** (e.g. 3.12.13); this repo is used there without pinning an older interpreter. |
+| FFmpeg | `sudo apt install ffmpeg` / `brew install ffmpeg`. Old apt builds (e.g. ffmpeg 4.x on Colab) are handled via `-vsync vfr` fallback in code; a newer static build is optional. |
 | Jupyter | `pip install jupyter` |
+
+On **Python 3.12**, you may see **SyntaxWarning** lines from **pydub** (`utils.py`, invalid escape sequences in regex strings). They come from the installed pydub package, not from this repo, and they do **not** stop the pipeline.
 
 ### Install
 
