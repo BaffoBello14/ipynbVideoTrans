@@ -304,6 +304,7 @@ class SpeedRate:
         self.uuid = uuid
         self.novoice_mp4_original = novoice_mp4
         self.novoice_mp4 = novoice_mp4
+        self._expected_timeline_end_ms = 0
         self.cache_folder = cache_folder if cache_folder else Path(
             f'{TEMP_DIR}/{str(uuid if uuid else time.time())}').as_posix()
         Path(self.cache_folder).mkdir(parents=True, exist_ok=True)
@@ -385,14 +386,37 @@ class SpeedRate:
                     # [Key] This is the final video slot length
                     self.queue_tts[tts_idx]['final_duration'] = real_duration
             
-            self._concat_video(processed_video_clips)
-            
+            merged_ok = self._concat_video(processed_video_clips)
+            if not merged_ok:
+                # Failed clip encodes left final_duration=0; fall back to subtitle slot lengths so
+                # dubbed audio matches the unchanged silent video duration (fixes long audio tail).
+                for it in self.queue_tts:
+                    it['final_duration'] = it['source_duration']
+
             #Total update time
             if Path(self.novoice_mp4).exists():
                 try:
                     self.raw_total_time = tools.get_video_duration(self.novoice_mp4)
                     logger.debug(f"[SpeedRate] New video generated, total duration:{self.raw_total_time}ms")
-                except: pass
+                    exp = int(getattr(self, '_expected_timeline_end_ms', 0) or 0)
+                    if (
+                        merged_ok
+                        and exp > 0
+                        and self.raw_total_time > 0
+                        and self.raw_total_time < exp * 0.92
+                        and self.novoice_mp4_original
+                        and tools.vail_file(self.novoice_mp4_original)
+                    ):
+                        logger.warning(
+                            f"[SpeedRate] Merged silent video ({self.raw_total_time}ms) is much shorter than "
+                            f"subtitle timeline ({exp}ms); restoring original novoice and aligning audio to SRT slots."
+                        )
+                        shutil.copy2(self.novoice_mp4_original, self.novoice_mp4)
+                        self.raw_total_time = tools.get_video_duration(self.novoice_mp4)
+                        for it in self.queue_tts:
+                            it['final_duration'] = it['source_duration']
+                except Exception:
+                    pass
         else:
             # Unchanged video, the duration is the original slot duration
             for it in self.queue_tts:
@@ -435,13 +459,45 @@ class SpeedRate:
             # Check the dubbing file
             if not current.get('filename') or not Path(current['filename']).exists():
                 # Generate placeholder silence
+                _ph_dur = max(self.MIN_CLIP_DURATION_MS, current['source_duration'])
                 dummy_wav = Path(self.cache_folder, f'silent_place_{i}.wav').as_posix()
-                AudioSegment.silent(duration=current['source_duration']).export(dummy_wav, format="wav")
+                AudioSegment.silent(duration=_ph_dur).export(dummy_wav, format="wav")
                 current['filename'] = dummy_wav
-                current['dubb_time'] = current['source_duration']
-                logger.debug(f"[Prepare] Subtitles[{current['line']}] No dubbing, generated{current['source_duration']}ms mute placeholder")
+                current['dubb_time'] = _ph_dur
+                logger.debug(f"[Prepare] Subtitles[{current['line']}] No dubbing, generated{_ph_dur}ms mute placeholder")
             else:
                 current['dubb_time'] = len(AudioSegment.from_file(current['filename']))
+
+        # Fix overlapping / bad SRT end times (negative or zero slot length, esp. last cue)
+        _n = len(self.queue_tts)
+        for i, current in enumerate(self.queue_tts):
+            if current['source_duration'] > 0:
+                continue
+            st = current['start_time_source']
+            if i < _n - 1:
+                nxt_st = self.queue_tts[i + 1]['start_time']
+                et = max(st + self.MIN_CLIP_DURATION_MS, nxt_st)
+                current['end_time_source'] = et
+                current['end_time'] = et
+            else:
+                et = max(
+                    st + self.MIN_CLIP_DURATION_MS,
+                    min(self.raw_total_time, current.get('end_time_source', self.raw_total_time)),
+                )
+                current['end_time_source'] = et
+                current['end_time'] = et
+            current['source_duration'] = current['end_time_source'] - current['start_time_source']
+            if current['source_duration'] <= 0:
+                current['source_duration'] = self.MIN_CLIP_DURATION_MS
+            logger.warning(
+                f"[Prepare] Fixed non-positive slot at line {current.get('line')}: "
+                f"duration={current['source_duration']}ms"
+            )
+
+        if self.queue_tts:
+            self._expected_timeline_end_ms = int(self.queue_tts[-1]['end_time_source'])
+        else:
+            self._expected_timeline_end_ms = int(self.raw_total_time or 0)
 
     def _calculate_adjustments(self):
         'Calculation strategy'
@@ -624,8 +680,11 @@ class SpeedRate:
                 logger.warning(f"[Video-Concat] Ignore invalid segments:{clip.get('filename')}")
         
         if valid_cnt == 0: 
-            logger.error('[Video-Concat] No valid segments, skip splicing')
-            return
+            logger.error(
+                '[Video-Concat] No valid segments, skip splicing — keeping original silent video. '
+                'Audio will use subtitle slot lengths (not zero-length video slots) to avoid A/V drift.'
+            )
+            return False
 
         concat_list = Path(self.cache_folder, "video_concat.txt").as_posix()
         with open(concat_list, 'w', encoding='utf-8') as f:
@@ -639,6 +698,7 @@ class SpeedRate:
 
         if Path(output_path).exists():
             shutil.move(output_path, self.novoice_mp4)
+        return True
 
     def _concat_audio_aligned(self):
         logger.debug('[Audio] Start aligning splicing...')
@@ -655,7 +715,7 @@ class SpeedRate:
             # This at least ensures that the audio will not be messed up due to video failure and maintains audio continuity.
             if slot_duration <= 0:
                 logger.warning(f"[Audio-Sync] Subtitles[{it['line']}] The video slot duration is 0, and the original duration is used for fallback:{it['source_duration']}ms")
-                slot_duration = max(1, it['source_duration'])
+                slot_duration = max(self.MIN_CLIP_DURATION_MS, it.get('source_duration', 0) or 0)
 
             current_slot_audio_len = 0
             
@@ -836,13 +896,31 @@ class TtsSpeedRate(SpeedRate):
             # Check the dubbing file
             if not current.get('filename') or not Path(current['filename']).exists():
                 # Generate placeholder silence
+                _ph_dur = max(self.MIN_CLIP_DURATION_MS, current['source_duration'])
                 dummy_wav = Path(self.cache_folder, f'silent_place_{i}.wav').as_posix()
-                AudioSegment.silent(duration=current['source_duration']).export(dummy_wav, format="wav")
+                AudioSegment.silent(duration=_ph_dur).export(dummy_wav, format="wav")
                 current['filename'] = dummy_wav
-                current['dubb_time'] = current['source_duration']
-                logger.debug(f"[Prepare] Subtitles[{current['line']}] No dubbing, generated{current['source_duration']}ms mute placeholder")
+                current['dubb_time'] = _ph_dur
+                logger.debug(f"[Prepare] Subtitles[{current['line']}] No dubbing, generated{_ph_dur}ms mute placeholder")
             else:
                 current['dubb_time'] = len(AudioSegment.from_file(current['filename']))
+
+        _len = len(self.queue_tts)
+        for i, current in enumerate(self.queue_tts):
+            if current['source_duration'] > 0:
+                continue
+            st = current['start_time']
+            if i < _len - 1:
+                et = max(st + self.MIN_CLIP_DURATION_MS, self.queue_tts[i + 1]['start_time'])
+                current['end_time'] = et
+            else:
+                et = max(st + self.MIN_CLIP_DURATION_MS, current.get('end_time', st + self.MIN_CLIP_DURATION_MS))
+                current['end_time'] = et
+            current['source_duration'] = max(self.MIN_CLIP_DURATION_MS, current['end_time'] - current['start_time'])
+            logger.warning(
+                f"[Prepare/TTS] Fixed non-positive slot at line {current.get('line')}: "
+                f"duration={current['source_duration']}ms"
+            )
 
     def _calculate_adjustments(self):
         'Calculation strategy'
