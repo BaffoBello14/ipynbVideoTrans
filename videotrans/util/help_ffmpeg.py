@@ -6,9 +6,47 @@ import subprocess
 import sys
 import time
 from pathlib import Path
+from typing import Optional
 
 from videotrans.configure.config import ROOT_DIR,tr,app_cfg,settings,TEMP_DIR,logger
 from videotrans.util import contants
+
+# FFmpeg `-fps_mode` exists from roughly 5.1 onward; older builds (e.g. Colab/apt) need `-vsync vfr`.
+_FFMPEG_SUPPORTS_FPS_MODE: Optional[bool] = None
+
+
+def ffmpeg_supports_fps_mode() -> bool:
+    """Return True if this ffmpeg build accepts the global option `-fps_mode`."""
+    global _FFMPEG_SUPPORTS_FPS_MODE
+    if _FFMPEG_SUPPORTS_FPS_MODE is not None:
+        return _FFMPEG_SUPPORTS_FPS_MODE
+    try:
+        p = subprocess.run(
+            ["ffmpeg", "-hide_banner", "-version"],
+            capture_output=True,
+            text=True,
+            timeout=8,
+        )
+        text = (p.stdout or "") + (p.stderr or "")
+        m = re.search(r"ffmpeg version\s+(?:n-)?(\d+)\.(\d+)", text, re.I)
+        if not m:
+            _FFMPEG_SUPPORTS_FPS_MODE = True
+            return _FFMPEG_SUPPORTS_FPS_MODE
+        major, minor = int(m.group(1)), int(m.group(2))
+        # Conservative: treat 5.1+ as supporting -fps_mode (matches typical release notes).
+        _FFMPEG_SUPPORTS_FPS_MODE = (major > 5) or (major == 5 and minor >= 1)
+        if not _FFMPEG_SUPPORTS_FPS_MODE:
+            logger.debug(f"[ffmpeg] Version {major}.{minor}: using -vsync vfr instead of -fps_mode")
+        return _FFMPEG_SUPPORTS_FPS_MODE
+    except Exception as e:
+        logger.debug(f"[ffmpeg] Could not probe version ({e}); assume -fps_mode supported")
+        _FFMPEG_SUPPORTS_FPS_MODE = True
+        return _FFMPEG_SUPPORTS_FPS_MODE
+
+
+def ffmpeg_vfr_output_args() -> list:
+    """Output-side VFR flags compatible with both new and older ffmpeg."""
+    return ["-fps_mode", "vfr"] if ffmpeg_supports_fps_mode() else ["-vsync", "vfr"]
 
 
 def extract_concise_error(stderr_text: str, max_lines=3, max_length=250) -> str:

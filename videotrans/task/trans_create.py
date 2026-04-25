@@ -1449,7 +1449,7 @@ class TransCreate(BaseTask):
                     "+faststart",
                 ]
                 if self.cfg.video_autorate:
-                    cmd2.extend(["-fps_mode", "vfr"])
+                    cmd2.extend(tools.ffmpeg_vfr_output_args())
                 
                 cmd2.extend(["-t", str(duration_s),  tmp_target_mp4_basename])
                 if is_copy_mode:
@@ -1489,7 +1489,7 @@ class TransCreate(BaseTask):
                 cmd3=["-movflags", "+faststart"]
                 
                 if self.cfg.video_autorate:
-                    cmd3.extend(["-fps_mode", "vfr"])
+                    cmd3.extend(tools.ffmpeg_vfr_output_args())
                     
                 cmd3.extend(["-t", str(duration_s), tmp_target_mp4_basename])
                 if app_cfg.video_codec.startswith('libx')  or settings.get('force_lib'):

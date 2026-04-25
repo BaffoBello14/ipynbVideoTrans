@@ -135,7 +135,7 @@ def _cut_video_get_duration(i, task, novoice_mp4_original, preset, crf):
         filter_complex.append("setpts=PTS")
 
     cmd.extend(['-vf', ",".join(filter_complex)])
-    cmd.extend(['-fps_mode', 'vfr']) # Critical fixes
+    cmd.extend(tools.ffmpeg_vfr_output_args())
     cmd.extend(['-t', f'{target_duration_s:.6f}']) # Forced limit on output duration
     
     cmd.append(os.path.basename(task['filename']))
@@ -166,7 +166,7 @@ def _cut_video_get_duration(i, task, novoice_mp4_original, preset, crf):
                 '-crf', crf,
                 '-pix_fmt', 'yuv420p',
                 '-vf', 'setpts=PTS',  # Explicitly add
-                '-fps_mode', 'vfr',   # Explicitly add
+                *tools.ffmpeg_vfr_output_args(),
                 os.path.basename(task['filename'])
             ]
             tools.runffmpeg(cmd_backup, force_cpu=True, cmd_dir=work_dir)
