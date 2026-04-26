@@ -20,11 +20,9 @@
 
 | Tool | Notes |
 |------|-------|
-| Python | **3.10+** for a local Jupyter setup (many users stay on 3.10.x). **Google Colab** currently provides **Python 3.12.x** (e.g. 3.12.13); this repo is used there without pinning an older interpreter. |
-| FFmpeg | `sudo apt install ffmpeg` / `brew install ffmpeg`. Old apt builds (e.g. ffmpeg 4.x on Colab) are handled via `-vsync vfr` fallback in code; a newer static build is optional. |
+| Python 3.10.x | required (3.10 exactly, < 3.11) |
+| FFmpeg | `sudo apt install ffmpeg` / `brew install ffmpeg` |
 | Jupyter | `pip install jupyter` |
-
-On **Python 3.12**, you may see **SyntaxWarning** lines from **pydub** (`utils.py`, invalid escape sequences in regex strings). They come from the installed pydub package, not from this repo, and they do **not** stop the pipeline.
 
 ### Install
 
@@ -57,12 +55,6 @@ jupyter notebook pyvideotrans_notebook.ipynb
 | 9 | Standalone TTS from SRT |
 | 10 | Utilities (list voices, providers, inspect SRT, check GPU) |
 
-### Workflow tips
-
-- **Step-by-step:** run ASR → Translate → (optional) **edit** `TARGET_SRT` → TTS → assemble. In **`pyvideotrans_colab.ipynb`**, set **`PAUSE_AFTER_TRANSLATION = True`** in the configuration cell so the full pipeline stops after translation until you press Enter (edit `TARGET_SRT` on Drive or in the file tree, then continue). Optional diagnostics: **`RUN_DIAGNOSTICS_AT_INIT`**. Avoid **`CLEAR_CACHE_BEFORE_RUN = True`** if you keep hand-edited files in `OUTPUT_DIR`.
-- **Short dubbing vs. long subtitle slots:** when `voice_autorate` is on, the backend can **mildly stretch** short clips (Rubber Band via `pyrubberband`) using `stretch_short_max_ms` and `stretch_short_max_ratio` on `TaskCfgVTT` / `TaskCfgTTS` (see the configuration cells in the notebooks). Install the Rubber Band system library where applicable; Colab installs `librubberband2` in the first setup cell.
-- **Higher-quality / custom voices:** Edge-TTS is the default. For **voice cloning** or engines such as **F5-TTS**, use the corresponding `TTS_TYPE` in `videotrans/tts/__init__.py` (often a **local Gradio** server plus `f5tts_url` / reference audio under `f5-tts/`). That path is heavier than the minimal Colab pip cell and is not enabled in the default notebook install.
-
 ---
 
 ## Configuration (Cell 2)
@@ -83,10 +75,6 @@ TTS_TYPE       = 0             # 0 = Edge-TTS (free)
 VOICE_ROLE     = "en-US-JennyNeural"
 
 SUBTITLE_TYPE  = 1             # 1 = hard (burned-in) subtitles
-
-# Optional: reduce trailing silence when TTS is shorter than the slot (needs pyrubberband)
-STRETCH_SHORT_MAX_MS    = 400
-STRETCH_SHORT_MAX_RATIO = 1.12
 ```
 
 ### API keys (optional, for cloud providers)

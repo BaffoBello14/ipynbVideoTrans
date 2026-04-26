@@ -772,9 +772,7 @@ class TransCreate(BaseTask):
                 target_audio=self.cfg.target_wav,
                 cache_folder=self.cfg.cache_folder,
                 align_sub_audio=self.cfg.align_sub_audio,  # Both work when audio acceleration and video slowdown are not enabled
-                remove_silent_mid=self.cfg.remove_silent_mid,  # Both work when audio acceleration and video slowdown are not enabled
-                stretch_short_max_ms=getattr(self.cfg, 'stretch_short_max_ms', 0) or 0,
-                stretch_short_max_ratio=getattr(self.cfg, 'stretch_short_max_ratio', 1.15) or 1.15,
+                remove_silent_mid=self.cfg.remove_silent_mid  # Both work when audio acceleration and video slowdown are not enabled
             )
             self.queue_tts = rate_inst.run()
             # After slow processing, update the total duration of the new video for audio and video alignment.
@@ -1449,7 +1447,7 @@ class TransCreate(BaseTask):
                     "+faststart",
                 ]
                 if self.cfg.video_autorate:
-                    cmd2.extend(tools.ffmpeg_vfr_output_args())
+                    cmd2.extend(["-fps_mode", "vfr"])
                 
                 cmd2.extend(["-t", str(duration_s),  tmp_target_mp4_basename])
                 if is_copy_mode:
@@ -1489,7 +1487,7 @@ class TransCreate(BaseTask):
                 cmd3=["-movflags", "+faststart"]
                 
                 if self.cfg.video_autorate:
-                    cmd3.extend(tools.ffmpeg_vfr_output_args())
+                    cmd3.extend(["-fps_mode", "vfr"])
                     
                 cmd3.extend(["-t", str(duration_s), tmp_target_mp4_basename])
                 if app_cfg.video_codec.startswith('libx')  or settings.get('force_lib'):

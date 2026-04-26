@@ -135,7 +135,7 @@ def _cut_video_get_duration(i, task, novoice_mp4_original, preset, crf):
         filter_complex.append("setpts=PTS")
 
     cmd.extend(['-vf', ",".join(filter_complex)])
-    cmd.extend(tools.ffmpeg_vfr_output_args())
+    cmd.extend(['-fps_mode', 'vfr']) # Critical fixes
     cmd.extend(['-t', f'{target_duration_s:.6f}']) # Forced limit on output duration
     
     cmd.append(os.path.basename(task['filename']))
@@ -166,7 +166,7 @@ def _cut_video_get_duration(i, task, novoice_mp4_original, preset, crf):
                 '-crf', crf,
                 '-pix_fmt', 'yuv420p',
                 '-vf', 'setpts=PTS',  # Explicitly add
-                *tools.ffmpeg_vfr_output_args(),
+                '-fps_mode', 'vfr',   # Explicitly add
                 os.path.basename(task['filename'])
             ]
             tools.runffmpeg(cmd_backup, force_cpu=True, cmd_dir=work_dir)
@@ -196,15 +196,8 @@ def _cut_video_get_duration(i, task, novoice_mp4_original, preset, crf):
     return task
 
 
-def _change_speed_rubberband(
-    input_path,
-    target_duration,
-    *,
-    allow_slowdown=False,
-    max_slowdown_extra_ms=0,
-    max_slowdown_ratio=1.15,
-):
-    '\n    Audio speed shifting using Rubber Band (speed up and optional slow-down).\n    '
+def _change_speed_rubberband(input_path, target_duration):
+    '\n    Audio speed shifting using Rubber Band\n    '
     if not HAS_RUBBERBAND:
         logger.warning(f"[Audio-RB] Rubberband is not installed, skip:{input_path}")
         return
@@ -217,42 +210,23 @@ def _change_speed_rubberband(
             
         current_duration = int((len(y) / sr) * 1000)
         
-        if target_duration <= 0:
-            target_duration = 1
-
+        if target_duration <= 0: target_duration = 1
+        
+        # [Logic Optimization] If the target duration is longer than the current time, it means that the audio needs to be slowed down.
+        # But in the current alignment strategy, audio is usually only compressed (accelerated).
+        # If target > current does occur, it usually means we should pad the silence instead of stretching the audio.
+        # For safety reasons, if the difference is too large, it will not be processed.
         if target_duration > current_duration:
-            if not allow_slowdown or max_slowdown_extra_ms <= 0:
-                logger.debug(
-                    f"[Audio-RB] target ({target_duration}ms) > current ({current_duration}ms), "
-                    "skip slowdown (disabled or no budget)."
-                )
-                return
-            gap = target_duration - current_duration
-            try:
-                ratio_cap = float(max_slowdown_ratio or 1.0)
-            except (TypeError, ValueError):
-                ratio_cap = 1.15
-            if ratio_cap < 1.0:
-                ratio_cap = 1.0
-            max_extra_by_ratio = max(0, int(current_duration * (ratio_cap - 1.0)))
-            extra_budget = min(gap, int(max_slowdown_extra_ms), max_extra_by_ratio)
-            if extra_budget < 1:
-                logger.debug(
-                    f"[Audio-RB] slowdown skipped (gap={gap}ms, budget cap): "
-                    f"current={current_duration}ms target={target_duration}ms"
-                )
-                return
-            target_duration = current_duration + extra_budget
+             # Allow small errors, or be handled by subsequent silent padding
+             logger.debug(f"[Audio-RB] target duration ({target_duration}) > current duration ({current_duration}), skipping the variable speed and letting the silence fill in.")
+             return
 
         time_stretch_rate = current_duration / target_duration
         
         # Limit range
         time_stretch_rate = max(0.2, min(time_stretch_rate, 50.0))
         
-        logger.debug(
-            f"[Audio-RB] {input_path} Original:{current_duration}ms -> target:{target_duration}ms "
-            f"rate:{time_stretch_rate:.3f}"
-        )
+        logger.debug(f"[Audio-RB] {input_path} Original length:{current_duration}ms -> target:{target_duration}ms magnification:{time_stretch_rate:.2f}")
 
         y_stretched = pyrb.time_stretch(y, sr, time_stretch_rate)
         
@@ -283,18 +257,9 @@ class SpeedRate:
                  target_audio=None,
                  cache_folder=None,
                  remove_silent_mid=False,
-                 align_sub_audio=True,
-                 stretch_short_max_ms=0,
-                 stretch_short_max_ratio=1.15,
+                 align_sub_audio=True
                  ):
         self.align_sub_audio = align_sub_audio
-        self.stretch_short_max_ms = int(max(0, stretch_short_max_ms or 0))
-        try:
-            self.stretch_short_max_ratio = float(stretch_short_max_ratio or 1.0)
-        except (TypeError, ValueError):
-            self.stretch_short_max_ratio = 1.15
-        if self.stretch_short_max_ratio < 1.0:
-            self.stretch_short_max_ratio = 1.0
         self.raw_total_time = raw_total_time if raw_total_time is not None else 0
         self.remove_silent_mid = remove_silent_mid
         self.queue_tts = queue_tts
@@ -304,7 +269,6 @@ class SpeedRate:
         self.uuid = uuid
         self.novoice_mp4_original = novoice_mp4
         self.novoice_mp4 = novoice_mp4
-        self._expected_timeline_end_ms = 0
         self.cache_folder = cache_folder if cache_folder else Path(
             f'{TEMP_DIR}/{str(uuid if uuid else time.time())}').as_posix()
         Path(self.cache_folder).mkdir(parents=True, exist_ok=True)
@@ -316,8 +280,7 @@ class SpeedRate:
         self.max_audio_speed_rate = float(settings.get('max_audio_speed_rate', 100))
         self.max_video_pts_rate = float(settings.get('max_video_pts_rate', 10))
 
-        self.audio_data = []
-        self.audio_slow_data = []
+        self.audio_data = [] 
         self.video_for_clips = [] 
 
         self.crf = "20"
@@ -334,12 +297,7 @@ class SpeedRate:
             pass
 
         self.audio_speed_rubberband = shutil.which("rubberband")
-        self._rubberband_ok = bool(HAS_RUBBERBAND)
-        logger.debug(
-            f"[SpeedRate] Init. AudioRate={self.shoud_audiorate}, VideoRate={self.shoud_videorate}, "
-            f"pyrubberband={HAS_RUBBERBAND}, rubberband_cli={bool(self.audio_speed_rubberband)}, "
-            f"stretch_short_max_ms={self.stretch_short_max_ms}, ratio={self.stretch_short_max_ratio}"
-        )
+        logger.debug(f"[SpeedRate] Init. AudioRate={self.shoud_audiorate}, VideoRate={self.shoud_videorate}, Rubberband={bool(self.audio_speed_rubberband)}")
 
     def run(self):
         if not self.shoud_audiorate and not self.shoud_videorate:
@@ -355,21 +313,13 @@ class SpeedRate:
         # 2. Calculation
         self._calculate_adjustments()
         
-        # 3. Audio speed change (speed up, then optional mild slow-down for short clips)
+        # 3. Audio speed change
         if self.audio_data:
             tools.set_process(text='Processing audio speed...', uuid=self.uuid)
-            if self._rubberband_ok:
+            if HAS_RUBBERBAND and self.audio_speed_rubberband:
                 self._execute_audio_speedup_rubberband()
             else:
-                 logger.warning('[SpeedRate] pyrubberband is not available, skipping audio physical speed shifting.')
-        if self.audio_slow_data:
-            tools.set_process(text='Stretching short dubbing clips...', uuid=self.uuid)
-            if self._rubberband_ok:
-                self._execute_audio_slowdown_rubberband()
-            else:
-                logger.warning(
-                    '[SpeedRate] pyrubberband is not available, skipping mild stretch of short dubbing.'
-                )
+                 logger.warning('[SpeedRate] Rubberband is not available, skipping audio physical speed shifting.')
         
         # 4. Video speed change
         if self.shoud_videorate and self.video_for_clips:
@@ -386,37 +336,14 @@ class SpeedRate:
                     # [Key] This is the final video slot length
                     self.queue_tts[tts_idx]['final_duration'] = real_duration
             
-            merged_ok = self._concat_video(processed_video_clips)
-            if not merged_ok:
-                # Failed clip encodes left final_duration=0; fall back to subtitle slot lengths so
-                # dubbed audio matches the unchanged silent video duration (fixes long audio tail).
-                for it in self.queue_tts:
-                    it['final_duration'] = it['source_duration']
-
+            self._concat_video(processed_video_clips)
+            
             #Total update time
             if Path(self.novoice_mp4).exists():
                 try:
                     self.raw_total_time = tools.get_video_duration(self.novoice_mp4)
                     logger.debug(f"[SpeedRate] New video generated, total duration:{self.raw_total_time}ms")
-                    exp = int(getattr(self, '_expected_timeline_end_ms', 0) or 0)
-                    if (
-                        merged_ok
-                        and exp > 0
-                        and self.raw_total_time > 0
-                        and self.raw_total_time < exp * 0.92
-                        and self.novoice_mp4_original
-                        and tools.vail_file(self.novoice_mp4_original)
-                    ):
-                        logger.warning(
-                            f"[SpeedRate] Merged silent video ({self.raw_total_time}ms) is much shorter than "
-                            f"subtitle timeline ({exp}ms); restoring original novoice and aligning audio to SRT slots."
-                        )
-                        shutil.copy2(self.novoice_mp4_original, self.novoice_mp4)
-                        self.raw_total_time = tools.get_video_duration(self.novoice_mp4)
-                        for it in self.queue_tts:
-                            it['final_duration'] = it['source_duration']
-                except Exception:
-                    pass
+                except: pass
         else:
             # Unchanged video, the duration is the original slot duration
             for it in self.queue_tts:
@@ -459,45 +386,13 @@ class SpeedRate:
             # Check the dubbing file
             if not current.get('filename') or not Path(current['filename']).exists():
                 # Generate placeholder silence
-                _ph_dur = max(self.MIN_CLIP_DURATION_MS, current['source_duration'])
                 dummy_wav = Path(self.cache_folder, f'silent_place_{i}.wav').as_posix()
-                AudioSegment.silent(duration=_ph_dur).export(dummy_wav, format="wav")
+                AudioSegment.silent(duration=current['source_duration']).export(dummy_wav, format="wav")
                 current['filename'] = dummy_wav
-                current['dubb_time'] = _ph_dur
-                logger.debug(f"[Prepare] Subtitles[{current['line']}] No dubbing, generated{_ph_dur}ms mute placeholder")
+                current['dubb_time'] = current['source_duration']
+                logger.debug(f"[Prepare] Subtitles[{current['line']}] No dubbing, generated{current['source_duration']}ms mute placeholder")
             else:
                 current['dubb_time'] = len(AudioSegment.from_file(current['filename']))
-
-        # Fix overlapping / bad SRT end times (negative or zero slot length, esp. last cue)
-        _n = len(self.queue_tts)
-        for i, current in enumerate(self.queue_tts):
-            if current['source_duration'] > 0:
-                continue
-            st = current['start_time_source']
-            if i < _n - 1:
-                nxt_st = self.queue_tts[i + 1]['start_time']
-                et = max(st + self.MIN_CLIP_DURATION_MS, nxt_st)
-                current['end_time_source'] = et
-                current['end_time'] = et
-            else:
-                et = max(
-                    st + self.MIN_CLIP_DURATION_MS,
-                    min(self.raw_total_time, current.get('end_time_source', self.raw_total_time)),
-                )
-                current['end_time_source'] = et
-                current['end_time'] = et
-            current['source_duration'] = current['end_time_source'] - current['start_time_source']
-            if current['source_duration'] <= 0:
-                current['source_duration'] = self.MIN_CLIP_DURATION_MS
-            logger.warning(
-                f"[Prepare] Fixed non-positive slot at line {current.get('line')}: "
-                f"duration={current['source_duration']}ms"
-            )
-
-        if self.queue_tts:
-            self._expected_timeline_end_ms = int(self.queue_tts[-1]['end_time_source'])
-        else:
-            self._expected_timeline_end_ms = int(self.raw_total_time or 0)
 
     def _calculate_adjustments(self):
         'Calculation strategy'
@@ -575,20 +470,7 @@ class SpeedRate:
                     "dubb_time": dubb_dur,
                     "target_time": audio_target
                 })
-            elif (
-                self.shoud_audiorate
-                and self.stretch_short_max_ms > 0
-                and dubb_dur < source_dur
-            ):
-                gap = source_dur - dubb_dur
-                if gap > 0:
-                    self.audio_slow_data.append({
-                        "filename": it['filename'],
-                        "dubb_time": dubb_dur,
-                        "target_time": source_dur,
-                        "max_slowdown_extra_ms": min(gap, self.stretch_short_max_ms),
-                    })
-
+            
             if self.shoud_videorate:
                 pts = video_target / source_dur if source_dur > 0 else 1.0
                 self.video_for_clips.append({
@@ -617,26 +499,6 @@ class SpeedRate:
         for task in all_task:
             try: task.result()
             except: pass
-
-    def _execute_audio_slowdown_rubberband(self):
-        logger.debug(f"[Audio] Start mild stretch for {len(self.audio_slow_data)} short clips")
-        all_task = []
-        for d in self.audio_slow_data:
-            all_task.append(
-                GlobalProcessManager.submit_task_cpu(
-                    _change_speed_rubberband,
-                    input_path=d['filename'],
-                    target_duration=d['target_time'],
-                    allow_slowdown=True,
-                    max_slowdown_extra_ms=d['max_slowdown_extra_ms'],
-                    max_slowdown_ratio=self.stretch_short_max_ratio,
-                )
-            )
-        for task in all_task:
-            try:
-                task.result()
-            except Exception:
-                pass
 
     def _video_speeddown(self):
         data = []
@@ -680,11 +542,8 @@ class SpeedRate:
                 logger.warning(f"[Video-Concat] Ignore invalid segments:{clip.get('filename')}")
         
         if valid_cnt == 0: 
-            logger.error(
-                '[Video-Concat] No valid segments, skip splicing — keeping original silent video. '
-                'Audio will use subtitle slot lengths (not zero-length video slots) to avoid A/V drift.'
-            )
-            return False
+            logger.error('[Video-Concat] No valid segments, skip splicing')
+            return
 
         concat_list = Path(self.cache_folder, "video_concat.txt").as_posix()
         with open(concat_list, 'w', encoding='utf-8') as f:
@@ -698,7 +557,6 @@ class SpeedRate:
 
         if Path(output_path).exists():
             shutil.move(output_path, self.novoice_mp4)
-        return True
 
     def _concat_audio_aligned(self):
         logger.debug('[Audio] Start aligning splicing...')
@@ -715,7 +573,7 @@ class SpeedRate:
             # This at least ensures that the audio will not be messed up due to video failure and maintains audio continuity.
             if slot_duration <= 0:
                 logger.warning(f"[Audio-Sync] Subtitles[{it['line']}] The video slot duration is 0, and the original duration is used for fallback:{it['source_duration']}ms")
-                slot_duration = max(self.MIN_CLIP_DURATION_MS, it.get('source_duration', 0) or 0)
+                slot_duration = max(1, it['source_duration'])
 
             current_slot_audio_len = 0
             
@@ -860,21 +718,13 @@ class TtsSpeedRate(SpeedRate):
         # 2. Calculation
         self._calculate_adjustments()
 
-        # 3. Audio speed change (speed up, then optional mild stretch for short clips)
+        # 3. Audio speed change
         if self.audio_data:
             tools.set_process(text='Processing audio speed...', uuid=self.uuid)
-            if self._rubberband_ok:
+            if HAS_RUBBERBAND and self.audio_speed_rubberband:
                 self._execute_audio_speedup_rubberband()
             else:
-                 logger.warning('[SpeedRate] pyrubberband is not available, skipping audio physical speed shifting.')
-        if self.audio_slow_data:
-            tools.set_process(text='Stretching short dubbing clips...', uuid=self.uuid)
-            if self._rubberband_ok:
-                self._execute_audio_slowdown_rubberband()
-            else:
-                logger.warning(
-                    '[SpeedRate] pyrubberband is not available, skipping mild stretch of short dubbing.'
-                )
+                 logger.warning('[SpeedRate] Rubberband is not available, skipping audio physical speed shifting.')
 
         tools.set_process(text='Concatenating final audio...', uuid=self.uuid)
         self._concat_audio_aligned()
@@ -896,31 +746,13 @@ class TtsSpeedRate(SpeedRate):
             # Check the dubbing file
             if not current.get('filename') or not Path(current['filename']).exists():
                 # Generate placeholder silence
-                _ph_dur = max(self.MIN_CLIP_DURATION_MS, current['source_duration'])
                 dummy_wav = Path(self.cache_folder, f'silent_place_{i}.wav').as_posix()
-                AudioSegment.silent(duration=_ph_dur).export(dummy_wav, format="wav")
+                AudioSegment.silent(duration=current['source_duration']).export(dummy_wav, format="wav")
                 current['filename'] = dummy_wav
-                current['dubb_time'] = _ph_dur
-                logger.debug(f"[Prepare] Subtitles[{current['line']}] No dubbing, generated{_ph_dur}ms mute placeholder")
+                current['dubb_time'] = current['source_duration']
+                logger.debug(f"[Prepare] Subtitles[{current['line']}] No dubbing, generated{current['source_duration']}ms mute placeholder")
             else:
                 current['dubb_time'] = len(AudioSegment.from_file(current['filename']))
-
-        _len = len(self.queue_tts)
-        for i, current in enumerate(self.queue_tts):
-            if current['source_duration'] > 0:
-                continue
-            st = current['start_time']
-            if i < _len - 1:
-                et = max(st + self.MIN_CLIP_DURATION_MS, self.queue_tts[i + 1]['start_time'])
-                current['end_time'] = et
-            else:
-                et = max(st + self.MIN_CLIP_DURATION_MS, current.get('end_time', st + self.MIN_CLIP_DURATION_MS))
-                current['end_time'] = et
-            current['source_duration'] = max(self.MIN_CLIP_DURATION_MS, current['end_time'] - current['start_time'])
-            logger.warning(
-                f"[Prepare/TTS] Fixed non-positive slot at line {current.get('line')}: "
-                f"duration={current['source_duration']}ms"
-            )
 
     def _calculate_adjustments(self):
         'Calculation strategy'
@@ -941,18 +773,6 @@ class TtsSpeedRate(SpeedRate):
                     "dubb_time": dubb_dur,
                     "target_time": source_dur # No limit, force acceleration to alignment
                 })
-            elif (
-                self.stretch_short_max_ms > 0
-                and dubb_dur < source_dur
-            ):
-                gap = source_dur - dubb_dur
-                if gap > 0:
-                    self.audio_slow_data.append({
-                        "filename": it['filename'],
-                        "dubb_time": dubb_dur,
-                        "target_time": source_dur,
-                        "max_slowdown_extra_ms": min(gap, self.stretch_short_max_ms),
-                    })
 
             logger.debug(f"[Calc] Mode={mode_log} Line={it['line']} | Source={source_dur} Dubb={dubb_dur} -> TargetA={audio_target}")
 

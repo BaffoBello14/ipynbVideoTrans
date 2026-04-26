@@ -254,9 +254,7 @@ class DubbingSrt(BaseTask):
                 target_audio=self.cfg.target_wav,
                 cache_folder=self.cfg.cache_folder,
                 remove_silent_mid=self.cfg.remove_silent_mid if not self.cfg.target_sub.endswith('.txt') else True, # Whether to remove the gap between subtitles. This only works when automatic acceleration is not enabled. It is removed when dubbing txt, that is, the audio file is directly connected.
-                align_sub_audio=False, # Unaligned subtitles only works when not automatically accelerated
-                stretch_short_max_ms=getattr(self.cfg, 'stretch_short_max_ms', 0) or 0,
-                stretch_short_max_ratio=getattr(self.cfg, 'stretch_short_max_ratio', 1.15) or 1.15,
+                align_sub_audio=False # Unaligned subtitles only works when not automatically accelerated
             )
             self.queue_tts = rate_inst.run()
 

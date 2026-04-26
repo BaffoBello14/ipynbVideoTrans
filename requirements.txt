@@ -1,6 +1,6 @@
 # pyVideoTrans - Notebook Edition
 # Core dependencies (no GUI/Qt required)
-# Python: 3.10+ recommended for local Jupyter; Google Colab currently uses 3.12.x (also supported).
+# Python >= 3.10, < 3.11
 
 # ── Audio / Video processing ──────────────────────────────────────────────────
 ffmpeg-python>=0.2.0
@@ -8,7 +8,6 @@ pydub>=0.25.1
 librosa>=0.10.0
 soundfile>=0.12.1
 soxr>=0.3.7
-pyrubberband>=0.3.0   # optional: audio time-stretch (align / shorten tail silence); needs Rubber Band libs
 
 # ── Speech Recognition (ASR) ──────────────────────────────────────────────────
 faster-whisper @ https://github.com/SYSTRAN/faster-whisper/archive/refs/heads/master.tar.gz
