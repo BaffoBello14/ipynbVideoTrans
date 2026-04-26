@@ -59,7 +59,7 @@ jupyter notebook pyvideotrans_notebook.ipynb
 
 ### Workflow tips
 
-- **Step-by-step:** run ASR → Translate → (optional) **edit** `TARGET_SRT` → TTS → assemble. In **`pyvideotrans_colab.ipynb`**, set **`PAUSE_AFTER_TRANSLATION = True`** in the configuration cell so the full pipeline stops after translation until you press Enter (edit `TARGET_SRT` on Drive or in the file tree, then continue). Optional diagnostics: **`RUN_DIAGNOSTICS_AT_INIT`**. Avoid **`CLEAR_CACHE_BEFORE_RUN = True`** if you keep hand-edited files in `OUTPUT_DIR`.
+- **Step-by-step:** run ASR → Translate → (optional) **edit** `TARGET_SRT` → TTS → assemble. In **`pyvideotrans_colab.ipynb`**, use the optional **Solo ASR / Solo Traduzione / Solo TTS** cells at the end of the notebook for a stepwise flow, or edit `TARGET_SRT` on Drive or in the Colab file tree between translate and TTS.
 - **Short dubbing vs. long subtitle slots:** when `voice_autorate` is on, the backend can **mildly stretch** short clips (Rubber Band via `pyrubberband`) using `stretch_short_max_ms` and `stretch_short_max_ratio` on `TaskCfgVTT` / `TaskCfgTTS` (see the configuration cells in the notebooks). Install the Rubber Band system library where applicable; Colab installs `librubberband2` in the first setup cell.
 - **Higher-quality / custom voices:** Edge-TTS is the default. For **voice cloning** or engines such as **F5-TTS**, use the corresponding `TTS_TYPE` in `videotrans/tts/__init__.py` (often a **local Gradio** server plus `f5tts_url` / reference audio under `f5-tts/`). That path is heavier than the minimal Colab pip cell and is not enabled in the default notebook install.
 
